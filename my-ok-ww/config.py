@@ -90,6 +90,7 @@ config = {
     'onetime_tasks': [  # tasks to execute
         ["src.task.DailyTask", "DailyTask"],
         ["src.task.TacetTask", "TacetTask"],
+        ["src.task.NightmareNestTask", "NightmareNestTask"],
         ["src.task.my_FastFarmEchoTask", "FastFarmEchoTask"],
     ], 'trigger_tasks': [
         ["src.task.MouseResetTask", "MouseResetTask"],
