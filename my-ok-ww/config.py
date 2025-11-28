@@ -6,9 +6,12 @@ from src.task.process_feature import process_feature
 
 version = "my"
 
+GAME_EXE_PATH = Path(r"D:\Games\Wuthering Waves\Wuthering Waves Game\Wuthering Waves.exe")
+
+
 def calculate_pc_exe_path(running_path):
-    game_exe_folder = Path(running_path).parents[3]
-    return str(game_exe_folder / "Wuthering Waves.exe")
+    # We bypass auto-detection and return the known game executable path.
+    return str(GAME_EXE_PATH)
 
 key_config_option = ConfigOption('Game Hotkey Config', {
     'Echo Key': 'q',
@@ -48,6 +51,7 @@ config = {
     },
     'my_app': ['src.globals', 'Globals'],
     'start_timeout': 120,  # default 60
+    'main_timeout': 600,  # allow time for updates/login during bootstrap
     'wait_until_settle_time': 0,
     # required if using feature detection
     'template_matching': {
@@ -88,6 +92,7 @@ config = {
     'launcher_error_log_file': 'logs/launcher_error.log',
     'version': version,
     'onetime_tasks': [  # tasks to execute
+        ["src.task.my_BootstrapMainTask", "BootstrapMainTask"],
         ["src.task.DailyTask", "DailyTask"],
         ["src.task.TacetTask", "TacetTask"],
         ["src.task.NightmareNestTask", "NightmareNestTask"],

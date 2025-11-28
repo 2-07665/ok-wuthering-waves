@@ -21,7 +21,7 @@ SCOPES = [
 @dataclass
 class SheetRunConfig:
     run_daily: bool
-    run_extra_stamina: bool
+    run_stamina: bool
     overflow_warning: bool
     tacet_serial: int
     run_nightmare: bool
@@ -93,13 +93,13 @@ class GoogleSheetClient:
         rows = self.fetch_config_rows()
         pairs = _rows_to_pairs(rows)
         run_daily = _get_bool(pairs, {"日常任务"})
-        run_extra = _get_bool(pairs, {"体力任务"})
+        run_stamina = _get_bool(pairs, {"体力任务"})
         tacet_serial = _get_int(pairs, {"序号"}, default=1)
         run_nightmare = _get_bool(pairs, {"梦魇巢穴"})
         overflow_warning = _get_bool(pairs, {"体力溢出预警"})
         return SheetRunConfig(
             run_daily=run_daily,
-            run_extra_stamina=run_extra,
+            run_stamina=run_stamina,
             tacet_serial=tacet_serial,
             run_nightmare=run_nightmare,
             overflow_warning=overflow_warning,
