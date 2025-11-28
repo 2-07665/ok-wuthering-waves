@@ -37,8 +37,6 @@ class BootstrapMainTask(WWOneTimeTask, BaseWWTask):
         from auto import ensure_game_running
         ensure_game_running(og.ok, timeout=start_timeout)
 
-        #self._init_ocr()
-
         if self._attempt_main(main_timeout):
             self.log_info("Reached main screen")
             return
