@@ -69,5 +69,5 @@ class BootstrapMainTask(WWOneTimeTask, BaseWWTask):
             self.ensure_main(time_out=total_timeout, esc=True)
             return True
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Failed to reach main within timeout.", exc)
+            logger.warning(f"Failed to reach main within timeout: {exc}")
             return False
