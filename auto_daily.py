@@ -9,6 +9,7 @@ from auto import (
     bootstrap_ok,
     fill_stamina_from_live,
     populate_result_from_infos,
+    read_live_stamina,
     require_task,
     run_onetime_task,
     send_summary_email,
@@ -56,6 +57,7 @@ def run() -> None:
     if skip_reason:
         result.status = "skipped"
         result.error = skip_reason
+        result.decision = skip_reason
         result.ended_at = started_at
         logger.info(f"Skipping run: {skip_reason}")
         sheet_client.append_run_result(result)
@@ -70,6 +72,10 @@ def run() -> None:
         run_onetime_task(executor, bootstrap_task, timeout=bootstrap_task.config.get("Main Timeout", 900))
         daily_task = require_task(executor, DailyTask)
         apply_daily_config(sheet_config, daily_task)
+        result.decision = "按表格执行日常任务"
+        current, backup = read_live_stamina(ok)
+        result.stamina_start = current
+        result.backup_start = backup
 
         daily_task.info_clear()
 

@@ -17,15 +17,20 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets"
 ]
 
+CONFIG_SHEET = "Config"
+DAILY_RUNS_SHEET = "DailyRuns"
+STAMINA_RUNS_SHEET = "StaminaRuns"
+
 
 @dataclass
 class SheetRunConfig:
     run_daily: bool
     run_stamina: bool
-    overflow_warning: bool
-    tacet_serial: int
     run_nightmare: bool
-
+    tacet_serial: int
+    tacet_name: str = ""
+    tacet_set1: str = ""
+    tacet_set2: str = ""
 
 @dataclass
 class RunResult:
@@ -33,28 +38,58 @@ class RunResult:
     ended_at: dt.datetime | None
     task_type: str
     status: str
+    stamina_start: int | None = None
+    backup_start: int | None = None
+    projected_daily_stamina: int | None = None
     daily_points: int | None = None
     stamina_used: int | None = None
     stamina_left: int | None = None
     backup_stamina: int | None = None
+    decision: str | None = None
     error: str | None = None
 
-    def as_row(self) -> List[str]:
-        """Convert to a flat row for the Runs sheet."""
+    def as_row(self, sheet: str | None = None) -> List[str]:
+        """Convert to a flat row for Sheets."""
         end = self.ended_at or dt.datetime.now()
         total_seconds = max(0, int(round((end - self.started_at).total_seconds())))
-        return [
-            _format_timestamp(self.started_at),
-            _format_timestamp(end),
-            _format_duration(total_seconds),
-            self.task_type,
-            self.status,
-            "" if self.daily_points is None else str(self.daily_points),
-            "" if self.stamina_used is None else str(self.stamina_used),
-            "" if self.stamina_left is None else str(self.stamina_left),
-            "" if self.backup_stamina is None else str(self.backup_stamina),
-            self.error or "",
-        ]
+        info = self._info_text()
+        if sheet == DAILY_RUNS_SHEET:
+            return [
+                _format_timestamp(self.started_at),
+                _format_timestamp(end),
+                _format_duration(total_seconds),
+                self.status,
+                "" if self.stamina_start is None else str(self.stamina_start),
+                "" if self.backup_start is None else str(self.backup_start),
+                "" if self.daily_points is None else str(self.daily_points),
+                "" if self.stamina_used is None else str(self.stamina_used),
+                "" if self.stamina_left is None else str(self.stamina_left),
+                "" if self.backup_stamina is None else str(self.backup_stamina),
+                info,
+            ]
+        if sheet == STAMINA_RUNS_SHEET:
+            return [
+                _format_timestamp(self.started_at),
+                _format_timestamp(end),
+                _format_duration(total_seconds),
+                self.status,
+                "" if self.stamina_start is None else str(self.stamina_start),
+                "" if self.backup_start is None else str(self.backup_start),
+                "" if self.stamina_used is None else str(self.stamina_used),
+                "" if self.stamina_left is None else str(self.stamina_left),
+                "" if self.backup_stamina is None else str(self.backup_stamina),
+                "" if self.projected_daily_stamina is None else str(self.projected_daily_stamina),
+                info,
+            ]
+        raise ValueError(f"Unsupported sheet '{sheet}' for result row.")
+
+    def _info_text(self) -> str:
+        parts: list[str] = []
+        if self.decision:
+            parts.append(self.decision)
+        if self.error:
+            parts.append(self.error)
+        return "; ".join(parts)
 
 
 class GoogleSheetClient:
@@ -62,7 +97,7 @@ class GoogleSheetClient:
         self,
         service_account_file: Path = SERVICE_ACCOUNT_FILE,
         spreadsheet_id: str = SPREADSHEET_ID,
-        scopes: Sequence[str] = SCOPES,
+        scopes=SCOPES,
     ):
         self.service_account_file = Path(service_account_file)
         self.spreadsheet_id = spreadsheet_id
@@ -87,7 +122,7 @@ class GoogleSheetClient:
         return self._spreadsheet
 
     def fetch_config_rows(self) -> List[List[str]]:
-        return self.spreadsheet.worksheet("Config").get_all_values()
+        return self.spreadsheet.worksheet(CONFIG_SHEET).get_all_values()
 
     def fetch_run_config(self) -> SheetRunConfig:
         rows = self.fetch_config_rows()
@@ -96,24 +131,36 @@ class GoogleSheetClient:
         run_stamina = _get_bool(pairs, {"体力任务"})
         tacet_serial = _get_int(pairs, {"序号"}, default=1)
         run_nightmare = _get_bool(pairs, {"梦魇巢穴"})
-        overflow_warning = _get_bool(pairs, {"体力溢出预警"})
+        tacet_name = _get_str(pairs, {"无音区选择", "Tacet Name"})
+        tacet_set1 = _get_str(pairs, {"套装1", "Tacet Set 1"})
+        tacet_set2 = _get_str(pairs, {"套装2", "Tacet Set 2"})
         return SheetRunConfig(
             run_daily=run_daily,
             run_stamina=run_stamina,
             tacet_serial=tacet_serial,
             run_nightmare=run_nightmare,
-            overflow_warning=overflow_warning,
+            tacet_name=tacet_name,
+            tacet_set1=tacet_set1,
+            tacet_set2=tacet_set2,
         )
 
     def update_stamina(self, current: int, backup: int, updated_at: dt.datetime) -> None:
         """Update stamina cells on Config sheet (E2 for timestamp, C4/C5 for current values)."""
-        ws = self.spreadsheet.worksheet("Config")
+        ws = self.spreadsheet.worksheet(CONFIG_SHEET)
         ws.update([[updated_at.strftime("%m-%d %H:%M")]], "E2", value_input_option="USER_ENTERED")
         ws.update([[current], [backup]], "B4:B5", value_input_option="USER_ENTERED")
 
     def append_run_result(self, result: RunResult) -> None:
-        ws = self.spreadsheet.worksheet("Runs")
-        ws.append_row(result.as_row(), value_input_option="USER_ENTERED")
+        sheet = self._sheet_name_for_result(result.task_type)
+        ws = self.spreadsheet.worksheet(sheet)
+        ws.append_row(result.as_row(sheet), value_input_option="USER_ENTERED")
+
+    def _sheet_name_for_result(self, task_type: str) -> str:
+        if task_type.lower() == "daily":
+            return DAILY_RUNS_SHEET
+        if task_type.lower() == "stamina":
+            return STAMINA_RUNS_SHEET
+        raise ValueError(f"Unsupported task type: {task_type}")
 
 
 def _rows_to_pairs(rows: Iterable[Sequence[str]]) -> list[tuple[str, str]]:
@@ -165,33 +212,65 @@ def _get_int(pairs: list[tuple[str, str]], names: set[str], default: int) -> int
     return default
 
 
+def _get_str(pairs: list[tuple[str, str]], names: set[str], default: str = "") -> str:
+    for key, val in pairs:
+        if key in names:
+            return str(val).strip()
+    return default
+
+
 if __name__ == "__main__":
     sheet = GoogleSheetClient()
 
+    print("Config rows snapshot:")
+    print(sheet.fetch_config_rows())
     config = sheet.fetch_run_config()
     print("Fetched configuration:")
     print(json.dumps(config.__dict__, ensure_ascii=False, indent=2))
 
-    # Flip these flags to exercise write paths when needed.
-    run_append_example = True
-    run_update_stamina_example = True
+    # Flip these to True when you want to manually exercise write paths.
+    run_append_daily = True
+    run_append_stamina = True
+    run_update_stamina_example = False
 
-    if run_append_example:
-        now = dt.datetime.now()
+    now = dt.datetime.now()
+
+    if run_append_daily:
         fake_result = RunResult(
-            started_at=now - dt.timedelta(seconds=114),
+            started_at=now - dt.timedelta(minutes=8),
             ended_at=now,
             task_type="daily",
             status="manual-test",
-            daily_points=100,
+            stamina_start=210,
+            backup_start=120,
+            daily_points=120,
             stamina_used=180,
-            stamina_left=10,
+            stamina_left=30,
             backup_stamina=0,
+            decision="测试写入日常",
             error=None,
         )
         sheet.append_run_result(fake_result)
-        print("Appended a test row to Runs.")
+        print("Appended a test row to DailyRuns.")
+
+    if run_append_stamina:
+        fake_result = RunResult(
+            started_at=now - dt.timedelta(minutes=5),
+            ended_at=now,
+            task_type="stamina",
+            status="manual-test",
+            stamina_start=240,
+            backup_start=360,
+            stamina_used=60,
+            stamina_left=180,
+            backup_stamina=300,
+            projected_daily_stamina=210,
+            decision="测试写入体力",
+            error=None,
+        )
+        sheet.append_run_result(fake_result)
+        print("Appended a test row to StaminaRuns.")
 
     if run_update_stamina_example:
-        sheet.update_stamina(120, 60, dt.datetime.now())
+        sheet.update_stamina(120, 0, dt.datetime.now())
         print("Updated stamina values on Config.")

@@ -65,6 +65,7 @@ autohelper
 working_images/
 repo/
 
+*.pyc
 
 # my
 credentials/

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --muted: #64748b;
+      --text: #0f172a;
+      --border: #e2e8f0;
+    }
+    body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+    .container { max-width: 820px; margin: 12px auto; padding: 16px; background: #fff; border: 1px solid var(--border); border-radius: 16px; }
+    .header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+    }
+    h1 { margin: 0; font-size: 22px; line-height: 1.2; }
+    .sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .status { color: {{status_color}}; }
+    .card { padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); }
+    .section-title { text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+    .metric-table { width: 100%; border-collapse: separate; border-spacing: 8px 6px; }
+    .metric-cell { padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; vertical-align: top; }
+    .label { color: var(--muted); font-size: 12px; margin-bottom: 4px; letter-spacing: 0.01em; display: block; }
+    .value { color: var(--text); font-size: 16px; font-weight: 600; }
+    .muted { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    @media (max-width: 600px) {
+      .container { margin: 12px; padding: 14px; }
+      .header { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1 class="status">{{title}}</h1>
+        <p class="sub">自动化执行摘要 · {{run_mode_name}}</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div class="section-title">Run Overview</div>
+      <table class="metric-table">
+        <tr>
+          <td class="metric-cell"><span class="label">开始时间</span><span class="value">{{started_at}}</span></td>
+          <td class="metric-cell"><span class="label">结束时间</span><span class="value">{{ended_at}}</span></td>
+        </tr>
+        <tr>
+          <td class="metric-cell"><span class="label">持续时长</span><span class="value">{{duration}}</span></td>
+          <td class="metric-cell"><span class="label">运行模式</span><span class="value">{{run_mode_name}}</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div class="section-title">Stamina</div>
+      <table class="metric-table">
+        <tr>
+          <td class="metric-cell"><span class="label">开始时</span><span class="value">结晶波片 {{stamina_start}} / 结晶单质 {{backup_start}}</span></td>
+          <td class="metric-cell"><span class="label">结束时</span><span class="value">结晶波片 {{stamina_left}} / 结晶单质 {{backup_stamina}}</span></td>
+        </tr>
+        <tr>
+          <td class="metric-cell"><span class="label">消耗</span><span class="value">{{stamina_used}}</span></td>
+          <td class="metric-cell"><span class="label">预计日常体力</span><span class="value">{{projected_daily_stamina}}</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div class="section-title">Config Snapshot</div>
+      <table class="metric-table">
+        <tr>
+          <td class="metric-cell" colspan="2"><span class="label">体力任务</span><span class="value">{{run_stamina}}</span></td>
+        </tr>
+        <tr>
+          <td class="metric-cell"><span class="label">无音区</span><span class="value">{{tacet_name}}</span></td>
+          <td class="metric-cell"><span class="label">套装</span><span class="value">{{tacet_set1}} / {{tacet_set2}}</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:12px; display: {{notes_display}};">
+      <div class="section-title">Notes</div>
+      <table class="metric-table">
+        <tr style="display: {{decision_display}};"><td class="metric-cell"><span class="label">提示</span><span class="value">{{decision}}</span></td></tr>
+        <tr style="display: {{error_display}};"><td class="metric-cell"><span class="label">错误</span><span class="value">{{error}}</span></td></tr>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

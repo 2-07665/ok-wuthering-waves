@@ -11,10 +11,20 @@ from src.task.BaseWWTask import BaseWWTask
 from src.task.TacetTask import TacetTask
 
 from manage_google_sheet import GoogleSheetClient, RunResult, SheetRunConfig
-from mailgun_send import send_email
+from mailgun_send import (
+    MAILGUN_TEMPLATE_DAILY,
+    MAILGUN_TEMPLATE_STAMINA,
+    send_email,
+)
 
 
 logger = Logger.get_logger(__name__)
+STATUS_STYLES = {
+    "success": ("成功", "#22c55e"),
+    "failed": ("失败", "#ef4444"),
+    "skipped": ("跳过", "#94a3b8"),
+    "running": ("运行中", "#38bdf8"),
+}
 
 
 def bootstrap_ok() -> OK:
@@ -81,44 +91,72 @@ def _sum_int(infos: Iterable[dict], key: str) -> Optional[int]:
 
 def send_summary_email(result: RunResult, sheet_config: SheetRunConfig, run_mode: str) -> None:
     subject_task = "日常任务" if run_mode == "daily" else "体力任务"
-    subject_status_map = {
-        "success": "成功",
-        "failed": "失败",
-        "skipped": "跳过",
+    status_label, status_color = STATUS_STYLES.get(result.status, (result.status, "#94a3b8"))
+    subject = f"{result.started_at.date()} WW{subject_task}: {status_label}"
+
+    start_ts = _format_timestamp(result.started_at)
+    end_ts = _format_timestamp(result.ended_at or dt.datetime.now())
+    duration = _format_duration_seconds(result.started_at, result.ended_at)
+    daily_complete = result.daily_points is not None and (result.daily_points or 0) >= 100
+    decision_note = result.decision or ("体力任务关闭" if result.status == "skipped" else "")
+
+    def fmt(val: Optional[int]) -> str:
+        return "未知" if val is None else str(val)
+
+    tacet_desc = sheet_config.tacet_name or "未设置"
+    set_desc = " / ".join(filter(None, [sheet_config.tacet_set1, sheet_config.tacet_set2])) or "未设置"
+    projected = fmt(result.projected_daily_stamina)
+    decision_text = decision_note or ""
+    error_text = result.error or ""
+    notes_display = "block" if (decision_text or error_text) else "none"
+    template_path = MAILGUN_TEMPLATE_STAMINA if run_mode == "stamina" else MAILGUN_TEMPLATE_DAILY
+    variables = {
+        "title": f"{subject_task} · {status_label}",
+        "run_mode_name": subject_task,
+        "status_label": status_label,
+        "status_color": status_color,
+        "started_at": start_ts,
+        "ended_at": end_ts,
+        "duration": duration,
+        "stamina_start": fmt(result.stamina_start),
+        "backup_start": fmt(result.backup_start),
+        "stamina_used": fmt(result.stamina_used),
+        "stamina_left": fmt(result.stamina_left),
+        "backup_stamina": fmt(result.backup_stamina),
+        "decision": decision_text,
+        "daily_points": fmt(result.daily_points),
+        "daily_complete_label": "是" if daily_complete else "否",
+        "tacet_name": tacet_desc,
+        "tacet_set1": sheet_config.tacet_set1 or "未设置",
+        "tacet_set2": sheet_config.tacet_set2 or "未设置",
+        "error": error_text,
+        "projected_daily_stamina": projected,
+        "notes_display": notes_display,
+        "decision_display": "block" if decision_text else "none",
+        "error_display": "block" if error_text else "none",
     }
-    subject_status = subject_status_map.get(result.status, result.status)
-    subject = f"{result.started_at.date()} WW{subject_task}: {subject_status}"
-
-    def fmt(val):
-        return "未知" if val is None else val
-
-    config_lines = [
-        f"运行类型: {subject_task}",
-        f"无音区序号: {sheet_config.tacet_serial}",
-        f"梦魇巢穴: {'是' if sheet_config.run_nightmare else '否'}",
-        f"体力任务: {'是' if sheet_config.run_stamina else '否'}",
-        f"体力溢出预警: {'是' if sheet_config.overflow_warning else '否'}",
-    ]
-
-    result_lines = [
-        f"状态: {result.status}",
-        f"体力消耗: {0 if result.stamina_used is None else result.stamina_used}",
-        f"当前体力: {fmt(result.stamina_left)} / 备用 {fmt(result.backup_stamina)}",
-    ]
-
     if run_mode == "daily":
-        result_lines.append(f"日常积分: {fmt(result.daily_points)}")
-        completed_daily = "未知"
-        if result.daily_points is not None:
-            completed_daily = (result.daily_points or 0) >= 100
-        result_lines.append(f"是否完成日常任务: {'是' if completed_daily else '否'}")
+        variables["run_daily"] = "是" if sheet_config.run_daily else "否"
+        variables["run_nightmare"] = "是" if sheet_config.run_nightmare else "否"
+    else:
+        variables["run_stamina"] = "是" if sheet_config.run_stamina else "否"
 
+    text_lines = [
+        f"运行类型: {subject_task}",
+        f"状态: {status_label}",
+        f"开始/结束: {start_ts} - {end_ts} ({duration})",
+        f"体力: 开始 {fmt(result.stamina_start)} / {fmt(result.backup_start)}; 消耗 {fmt(result.stamina_used)} / 结束 {fmt(result.stamina_left)} / 备用 {fmt(result.backup_stamina)}",
+        f"预计日常体力: {projected}",
+        f"无音区: {tacet_desc}; 套装: {set_desc}; 梦魇巢穴: {'是' if sheet_config.run_nightmare else '否'}",
+        f"决策: {decision_note or '无'}",
+    ]
+    if run_mode == "daily":
+        text_lines.append(f"日常积分: {fmt(result.daily_points)} (是否完成: {'是' if daily_complete else '否'})")
     if result.error:
-        result_lines.append(f"错误: {result.error}")
-
-    body = "\n\n".join(["\n".join(config_lines), "\n".join(result_lines)])
+        text_lines.append(f"错误: {result.error}")
+    body = "\n".join(text_lines)
     try:
-        send_email(subject, body)
+        send_email(subject, body, variables=variables, template_path=template_path)
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to send summary email", exc)
 
@@ -169,6 +207,16 @@ def fill_stamina_from_live(ok: OK | None, result: RunResult, stamina_task: Tacet
         return
     if result.stamina_left is not None and result.backup_stamina is not None:
         return
+    current, backup = read_live_stamina(ok, stamina_task)
+    if current is not None and backup is not None:
+        result.stamina_left = current
+        result.backup_stamina = backup
+        return
+    logger.warning("Failed to capture stamina after task; values remain unknown.")
+
+
+def read_live_stamina(ok: OK, stamina_task: TacetTask | None = None) -> tuple[int | None, int | None]:
+    """Open the stamina panel and return current/back-up stamina."""
     try:
         task = stamina_task or require_task(ok.task_executor, TacetTask)
         for _ in range(2):
@@ -182,13 +230,31 @@ def fill_stamina_from_live(ok: OK | None, result: RunResult, stamina_task: Tacet
             except Exception:
                 current, backup = -1, -1
             if current >= 0 and backup >= 0:
-                result.stamina_left = current
-                result.backup_stamina = backup
-                return
+                return current, backup
             task.sleep(1)
-        logger.warning("Failed to capture stamina after task; values remain unknown.")
+        return None, None
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to read live stamina", exc)
+        return None, None
+
+
+def _format_timestamp(value: dt.datetime) -> str:
+    return value.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _format_duration_seconds(start: dt.datetime, end: dt.datetime | None) -> str:
+    end = end or dt.datetime.now()
+    total_seconds = max(0, int(round((end - start).total_seconds())))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    parts: list[str] = []
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if seconds or not parts:
+        parts.append(f"{seconds}s")
+    return " ".join(parts)
 
 
 def stop_game(ok: OK) -> None:

@@ -18,12 +18,16 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
         self.name = "Tacet Suppression"
         default_config = {
             'Which Tacet Suppression to Farm': 1,  # starts with 1
+            'Max Stamina to Spend': 0,  # 0 = unlimited, otherwise stops after spending this much
+            'Prefer Single Spend': False,  # force single-spend (60) even if double is available
         }
         self.total_number = 12
         self.target_enemy_time_out = 10
         default_config.update(self.default_config)
         self.config_description = {
             'Which Tacet Suppression to Farm': 'The Tacet Suppression number in the F2 list.',
+            'Max Stamina to Spend': 'Stop after spending this amount; 0 = no cap.',
+            'Prefer Single Spend': 'Force single spend (60) even if double is available.',
         }
         self.default_config = default_config
         self.door_walk_method = {  # starts with 0
@@ -47,15 +51,23 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             must_use = 180 - used_stamina
         else:
             must_use = 0
+        max_spend = int(config.get('Max Stamina to Spend', 0) or 0)
+        prefer_single = bool(config.get('Prefer Single Spend', False))
+        spent = 0
         self.info_incr('used stamina', 0)
         while True:
             self.sleep(1)
+            if max_spend and spent >= max_spend:
+                return self.not_enough_stamina()
             gray_book_boss = self.openF2Book("gray_book_boss")
             self.click_box(gray_book_boss, after_sleep=1)
             current, back_up, total = self.get_stamina()
             if current == -1:
                 self.click_relative(0.04, 0.4, after_sleep=1)
                 current, back_up, total = self.get_stamina()
+            if max_spend and (max_spend - spent) < self.stamina_once:
+                self.log_info("Reached stamina budget; stopping Tacet farm")
+                return self.not_enough_stamina()
             if total < self.stamina_once:
                 return self.not_enough_stamina()
 
@@ -79,8 +91,13 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             self.sleep(3)
             self.walk_to_treasure()
             self.pick_f(handle_claim=False)
-            can_continue, used = self.use_stamina(once=self.stamina_once, must_use=must_use)
+            can_continue, used = self.use_stamina(
+                once=self.stamina_once,
+                must_use=must_use,
+                prefer_single=prefer_single or (max_spend and (max_spend - spent) <= self.stamina_once),
+            )
             self.info_incr('used stamina', used)
+            spent += used
             self.sleep(4)
             self.click(0.51, 0.84, after_sleep=3)
             if not can_continue:
