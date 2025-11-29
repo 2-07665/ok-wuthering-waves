@@ -4,7 +4,6 @@ from qfluentwidgets import FluentIcon
 
 from ok import Logger
 from src.task.BaseWWTask import number_re, stamina_re
-from src.task.FarmEchoTask import FarmEchoTask
 from src.task.ForgeryTask import ForgeryTask
 from src.task.NightmareNestTask import NightmareNestTask
 from src.task.TacetTask import TacetTask
