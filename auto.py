@@ -60,7 +60,6 @@ def run_onetime_task(executor, task, *, timeout: int = 1800) -> None:
 
 def populate_result_from_infos(result: RunResult, info_sources: Iterable[dict]) -> None:
     result.daily_points = _first_int(info_sources, ["daily points", "total daily points"])
-    result.stamina_used = _sum_int(info_sources, "used stamina")
     result.stamina_left = _first_int(info_sources, ["current_stamina"])
     result.backup_stamina = _first_int(info_sources, ["back_up_stamina"])
 
@@ -76,17 +75,17 @@ def _first_int(infos: Iterable[dict], keys: list[str]) -> Optional[int]:
     return None
 
 
-def _sum_int(infos: Iterable[dict], key: str) -> Optional[int]:
-    total = 0
-    found = False
-    for info in infos:
-        if key in info:
-            try:
-                total += int(info[key])
-                found = True
-            except (TypeError, ValueError):
-                return None
-    return total if found else None
+def backfill_stamina_used_from_totals(result: RunResult) -> None:
+    """Derive stamina_used from start/end totals when it was not recorded."""
+    if (
+        result.stamina_used is not None
+        or None in (result.stamina_start, result.backup_start, result.stamina_left, result.backup_stamina)
+    ):
+        return
+    start_total = (result.stamina_start or 0) + (result.backup_start or 0)
+    end_total = (result.stamina_left or 0) + (result.backup_stamina or 0)
+    consumed = max(0, start_total - end_total)
+    result.stamina_used = int(round(consumed / 60.0)) * 60
 
 
 def send_summary_email(result: RunResult, sheet_config: SheetRunConfig, run_mode: str) -> None:
@@ -164,12 +163,12 @@ def send_summary_email(result: RunResult, sheet_config: SheetRunConfig, run_mode
 def update_sheet_stamina(sheet_client: GoogleSheetClient, result: RunResult) -> None:
     """Push stamina numbers back to the Config sheet."""
     if result.stamina_left is None or result.backup_stamina is None:
-        logger.warning("Stamina values missing; skipping sheet stamina update.")
+        logger.warning("MY-OK-WW: Stamina values missing; skipping sheet stamina update.")
         return
     try:
         sheet_client.update_stamina(result.stamina_left, result.backup_stamina, result.ended_at or dt.datetime.now())
     except Exception as exc:  # noqa: BLE001
-        logger.error("Failed to update stamina on sheet", exc)
+        logger.error("MY-OK-WW: Failed to update stamina on sheet", exc)
 
 
 def ensure_game_running(ok: OK, timeout: int = 120) -> None:
@@ -201,13 +200,13 @@ def ensure_game_running(ok: OK, timeout: int = 120) -> None:
     raise RuntimeError("Game window not ready within timeout.")
 
 
-def fill_stamina_from_live(ok: OK | None, result: RunResult, stamina_task: TacetTask | None = None) -> None:
+def fill_stamina_from_live(ok: OK | None, result: RunResult, task: BaseWWTask | None = None) -> None:
     """Try to read stamina directly if it was not recorded during task execution."""
     if ok is None:
         return
     if result.stamina_left is not None and result.backup_stamina is not None:
         return
-    current, backup = read_live_stamina(ok, stamina_task)
+    current, backup = read_live_stamina(ok, task)
     if current is not None and backup is not None:
         result.stamina_left = current
         result.backup_stamina = backup
@@ -215,10 +214,10 @@ def fill_stamina_from_live(ok: OK | None, result: RunResult, stamina_task: Tacet
     logger.warning("Failed to capture stamina after task; values remain unknown.")
 
 
-def read_live_stamina(ok: OK, stamina_task: TacetTask | None = None) -> tuple[int | None, int | None]:
+def read_live_stamina(ok: OK, task: BaseWWTask | None = None) -> tuple[int | None, int | None]:
     """Open the stamina panel and return current/back-up stamina."""
     try:
-        task = stamina_task or require_task(ok.task_executor, TacetTask)
+        task = task or require_task(ok.task_executor, TacetTask)
         for _ in range(2):
             task.ensure_main(time_out=60, esc=True)
             # Open the book (F2) to show stamina and read it, then close.

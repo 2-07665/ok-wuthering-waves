@@ -6,6 +6,7 @@ import traceback
 from ok import Logger
 
 from auto import (
+    backfill_stamina_used_from_totals,
     bootstrap_ok,
     fill_stamina_from_live,
     populate_result_from_infos,
@@ -138,7 +139,8 @@ def run() -> None:
 
             result.status = "success"
             populate_result_from_infos(result, (stamina_task.info,))
-            fill_stamina_from_live(ok, result, stamina_task=stamina_task)
+            fill_stamina_from_live(ok, result, task=stamina_task)
+            backfill_stamina_used_from_totals(result)
         else:
             result.status = "skipped"
             result.error = reason
@@ -147,7 +149,8 @@ def run() -> None:
         result.status = "failed"
         result.error = "".join(traceback.format_exception_only(type(exc), exc)).strip()
         logger.error("Automation failed", exc)
-        fill_stamina_from_live(ok, result, stamina_task=stamina_task)
+        fill_stamina_from_live(ok, result, task=stamina_task)
+        backfill_stamina_used_from_totals(result)
     finally:
         result.ended_at = dt.datetime.now()
         if ok is not None:

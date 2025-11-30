@@ -86,9 +86,9 @@ class RunResult:
     def _info_text(self) -> str:
         parts: list[str] = []
         if self.decision:
-            parts.append(self.decision)
+            parts.append(f"Decision: {self.decision}")
         if self.error:
-            parts.append(self.error)
+            parts.append(f"Error: {self.error}")
         return "; ".join(parts)
 
 
@@ -137,15 +137,15 @@ class GoogleSheetClient:
         return SheetRunConfig(
             run_daily=run_daily,
             run_stamina=run_stamina,
-            tacet_serial=tacet_serial,
             run_nightmare=run_nightmare,
+            tacet_serial=tacet_serial,
             tacet_name=tacet_name,
             tacet_set1=tacet_set1,
             tacet_set2=tacet_set2,
         )
 
     def update_stamina(self, current: int, backup: int, updated_at: dt.datetime) -> None:
-        """Update stamina cells on Config sheet (E2 for timestamp, C4/C5 for current values)."""
+        """Update stamina cells on Config sheet (E2 for timestamp, B4/B5 for current values)."""
         ws = self.spreadsheet.worksheet(CONFIG_SHEET)
         ws.update([[updated_at.strftime("%m-%d %H:%M")]], "E2", value_input_option="USER_ENTERED")
         ws.update([[current], [backup]], "B4:B5", value_input_option="USER_ENTERED")
