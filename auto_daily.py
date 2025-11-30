@@ -92,8 +92,6 @@ def run() -> None:
         result.status = "failed"
         result.error = "".join(traceback.format_exception_only(type(exc), exc)).strip()
         logger.error("MY-OK-WW: Automation failed", exc)
-        fill_stamina_from_live(ok, result, task=daily_task)
-        backfill_stamina_used_from_totals(result)
     finally:
         result.ended_at = dt.datetime.now()
         if ok is not None:

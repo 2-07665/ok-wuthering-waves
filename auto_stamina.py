@@ -6,10 +6,7 @@ import traceback
 from ok import Logger
 
 from auto import (
-    backfill_stamina_used_from_totals,
     bootstrap_ok,
-    fill_stamina_from_live,
-    populate_result_from_infos,
     read_live_stamina,
     require_task,
     run_onetime_task,
@@ -25,7 +22,7 @@ from src.task.TacetTask import TacetTask
 logger = Logger.get_logger(__name__)
 RUN_MODE = "stamina"
 DAILY_TARGET_HOUR: int | None = 16  # set to your daily run hour
-DAILY_TARGET_MINUTE: int | None = 0  # set to your daily run minute
+DAILY_TARGET_MINUTE: int | None = 30  # set to your daily run minute
 
 
 def apply_stamina_config(sheet_config: SheetRunConfig, stamina_task: TacetTask, burn: int) -> None:
@@ -34,7 +31,7 @@ def apply_stamina_config(sheet_config: SheetRunConfig, stamina_task: TacetTask, 
     stamina_task.config["Prefer Single Spend"] = True
     stamina_task.config.save_file()
     logger.info(
-        f"Loaded stamina config: tacet #{sheet_config.tacet_serial}, "
+        f"MY-OK-WW: Loaded stamina config: tacet #{sheet_config.tacet_serial}, "
         f"run_stamina={sheet_config.run_stamina}, burn={burn}"
     )
 
@@ -51,11 +48,9 @@ def predict_future_stamina(current: int, backup: int, minutes: int) -> tuple[int
     return current_after, backup_after
 
 
-def minutes_until_next_daily(target_hour: int | None = None, target_minute: int | None = None) -> int:
+def minutes_until_next_daily(target_hour: int, target_minute: int) -> int:
     """Compute minutes until the next daily run target time (defaults to 24h later)."""
     now = dt.datetime.now()
-    if target_hour is None or target_minute is None:
-        return 24 * 60
     target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
     if target <= now:
         target += dt.timedelta(days=1)
@@ -64,23 +59,25 @@ def minutes_until_next_daily(target_hour: int | None = None, target_minute: int 
 
 def calculate_burn(current: int | None, backup: int | None, minutes_to_next: int) -> tuple[bool, int, int | None, str]:
     """Return (should_run, burn_amount, projected_total, reason)."""
-    if current is None or backup is None:
+    if current is None:
         return True, 60, None, "无法读取体力，按默认消耗一次"
+    if backup is None:
+        backup = 0
     current = max(0, current)
     backup = max(0, backup)
     future_current, future_backup = predict_future_stamina(current, backup, minutes_to_next)
-    future_total = future_current + future_backup
+    future_total = future_current + 2 * future_backup
     if future_total <= 240:
-        return False, 0, future_total, "预计不会溢出，无需体力任务"
+        return False, 0, future_total, f"预计下次日常有 {future_total} 体力，不会溢出"
 
-    target_total = 180
+    target_total = 190
     burn_needed = max(0, future_total - target_total)
     available = current + backup
     burn = min(available, burn_needed)
     burn = (burn // 60) * 60  # align to task spend units
     if burn < 60:
-        return False, 0, future_total, "可消耗体力不足 60，跳过"
-    return True, burn, future_total - burn, f"预计至下次日常有 {future_total} 体力，消耗至约 {target_total}"
+        return False, 0, future_total, f"预计下次日常有 {future_total} 体力，当前可消耗体力不足 60"
+    return True, burn, future_total - burn, f"预计下次日常有 {future_total} 体力，消耗至 {future_total - burn}"
 
 
 def run() -> None:
@@ -88,7 +85,7 @@ def run() -> None:
     sheet_config = sheet_client.fetch_run_config()
 
     started_at = dt.datetime.now()
-    logger.info(f"Selected run mode: {RUN_MODE}")
+    logger.info(f"MY-OK-WW: Selected run mode: {RUN_MODE}")
 
     result = RunResult(
         started_at=started_at,
@@ -99,14 +96,13 @@ def run() -> None:
 
     skip_reason = None
     if not sheet_config.run_stamina:
-        skip_reason = "run_stamina set to False"
+        skip_reason = "体力任务设置为不执行"
 
     if skip_reason:
         result.status = "skipped"
-        result.error = skip_reason
         result.decision = skip_reason
         result.ended_at = started_at
-        logger.info(f"Skipping run: {skip_reason}")
+        logger.info(f"MY-OK_WW: Skipping run because {skip_reason}")
         sheet_client.append_run_result(result)
         send_summary_email(result, sheet_config, RUN_MODE)
         return
@@ -117,13 +113,13 @@ def run() -> None:
         ok = bootstrap_ok()
         executor = ok.task_executor
         bootstrap_task = require_task(executor, BootstrapMainTask)
-        run_onetime_task(executor, bootstrap_task, timeout=bootstrap_task.config.get("Main Timeout", 900))
+        run_onetime_task(executor, bootstrap_task, timeout=bootstrap_task.config.get("Main Timeout", 600))
         stamina_task = require_task(executor, TacetTask)
         stamina_task.info_clear()
 
         current, backup = read_live_stamina(ok, stamina_task)
         result.stamina_start = current
-        result.backup_start = backup
+        result.backup_start = backup if backup else 0
         if current is not None and backup is not None:
             result.stamina_left = current
             result.backup_stamina = backup
@@ -135,22 +131,20 @@ def run() -> None:
         if should_run:
             apply_stamina_config(sheet_config, stamina_task, burn)
 
-            run_onetime_task(executor, stamina_task, timeout=1800)
+            run_onetime_task(executor, stamina_task, timeout=600)
 
             result.status = "success"
-            populate_result_from_infos(result, (stamina_task.info,))
-            fill_stamina_from_live(ok, result, task=stamina_task)
-            backfill_stamina_used_from_totals(result)
+
+            read_live_stamina(ok, result, task=stamina_task)
+            result.stamina_used = burn
         else:
             result.status = "skipped"
-            result.error = reason
-            logger.info(f"Skipping run: {reason}")
+            result.stamina_used = 0
+            logger.info(f"MY-OK-WW: Skipping run: {reason}")
     except Exception as exc:  # noqa: BLE001
         result.status = "failed"
         result.error = "".join(traceback.format_exception_only(type(exc), exc)).strip()
-        logger.error("Automation failed", exc)
-        fill_stamina_from_live(ok, result, task=stamina_task)
-        backfill_stamina_used_from_totals(result)
+        logger.error("MY-OK-WW: Automation failed", exc)
     finally:
         result.ended_at = dt.datetime.now()
         if ok is not None:
