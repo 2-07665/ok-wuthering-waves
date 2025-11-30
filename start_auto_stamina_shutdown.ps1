@@ -4,11 +4,11 @@ Set-Location $root
 $python = Join-Path $root ".venv\Scripts\python.exe"
 
 $p = Start-Process -FilePath $python `
-                   -ArgumentList "auto_daily.py" `
+                   -ArgumentList "auto_stamina.py" `
                    -WorkingDirectory $root `
                    -PassThru -NoNewWindow
 
-$exited = $p.WaitForExit(1200 * 1000)
+$exited = $p.WaitForExit(600 * 1000)
 
 if (-not $exited) {
     try { Stop-Process -Id $p.Id -Force -ErrorAction Stop } catch {}
