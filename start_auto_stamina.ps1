@@ -3,33 +3,17 @@ Set-Location $root
 
 $python = Join-Path $root ".venv\Scripts\python.exe"
 $shutdownFlag = 64  # bit set by auto_stamina when shutdown is requested via Google Sheets
-$logFile = Join-Path $root "start_auto_stamina.log"
-
-function Write-Log($message) {
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    Add-Content -Path $logFile -Value "$timestamp`t$message"
-}
-
-try {
-    $logDir = Split-Path $logFile -Parent
-    if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
-} catch {}
 
 $p = Start-Process -FilePath $python `
                    -ArgumentList "auto_stamina.py" `
                    -WorkingDirectory $root `
-                   -PassThru -NoNewWindow
-
-$exited = $p.WaitForExit(600 * 1000)
-
-if (-not $exited) {
-    Write-Log "Stamina run exceeded timeout; killing process and shutting down."
-    try { Stop-Process -Id $p.Id -Force -ErrorAction Stop } catch { Write-Log "Failed to stop process: $($_.Exception.Message)" }
-    shutdown.exe /s /t 0
-    exit 1
-}
+                   -PassThru -NoNewWindow -Wait
 
 $rawExit = $p.ExitCode
+if ($null -eq $rawExit) {
+    Write-Host "Stamina run finished but exit code was not available (pid=$($p.Id))."
+    exit 1
+}
 $shouldShutdown = ($rawExit -band $shutdownFlag) -ne 0
 $exitCode = $rawExit -band 0x3F  # strip shutdown flag
 
