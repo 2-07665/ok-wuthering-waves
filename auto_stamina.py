@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import sys
 import traceback
+from zoneinfo import ZoneInfo
 
 from ok import Logger
 
@@ -22,8 +23,8 @@ from src.task.TacetTask import TacetTask
 
 logger = Logger.get_logger(__name__)
 RUN_MODE = "stamina"
-DAILY_TARGET_HOUR: int | None = 16  # set to your daily run hour
-DAILY_TARGET_MINUTE: int | None = 30  # set to your daily run minute
+DAILY_TARGET_HOUR: int = 4
+DAILY_TARGET_MINUTE: int = 30
 SHUTDOWN_EXIT_CODE = 64  # bit flag added to exit code when shutdown is requested
 
 
@@ -50,9 +51,11 @@ def predict_future_stamina(current: int, backup: int, minutes: int) -> tuple[int
     return current_after, backup_after
 
 
-def minutes_until_next_daily(target_hour: int, target_minute: int) -> int:
-    """Compute minutes until the next daily run target time (defaults to 24h later)."""
-    now = dt.datetime.now()
+def minutes_until_next_daily(
+    target_hour: int, target_minute: int, tz: dt.tzinfo = ZoneInfo("Asia/Shanghai")
+) -> int:
+    """Compute minutes until the next target time in the given timezone (defaults to 24h later)."""
+    now = dt.datetime.now(tz)
     target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
     if target <= now:
         target += dt.timedelta(days=1)

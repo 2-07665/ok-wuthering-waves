@@ -1,4 +1,5 @@
 import datetime as dt
+from zoneinfo import ZoneInfo
 
 def predict_future_stamina(current: int, backup: int, minutes: int) -> tuple[int, int]:
     """Predict current/back-up stamina after `minutes` of regen."""
@@ -12,9 +13,11 @@ def predict_future_stamina(current: int, backup: int, minutes: int) -> tuple[int
     return current_after, backup_after
 
 
-def minutes_until_next_daily(target_hour: int, target_minute: int) -> int:
-    """Compute minutes until the next daily run target time (defaults to 24h later)."""
-    now = dt.datetime.now()
+def minutes_until_next_daily(
+    target_hour: int, target_minute: int, tz: dt.tzinfo = ZoneInfo("Asia/Shanghai")
+) -> int:
+    """Compute minutes until the next target time in the given timezone (defaults to 24h later)."""
+    now = dt.datetime.now(tz)
     target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
     if target <= now:
         target += dt.timedelta(days=1)
@@ -42,6 +45,6 @@ def calculate_burn(current: int | None, backup: int | None, minutes_to_next: int
         return False, 0, future_total, f"预计至下次日常有 {future_total} 体力，当前可消耗体力不足 60"
     return True, burn, future_total - burn, f"预计至下次日常有 {future_total} 体力，消耗至约 {future_total - burn}"
 
-print(minutes_until_next_daily(17,7))
-print(predict_future_stamina(98,0,minutes_until_next_daily(17,7)))
-print(calculate_burn(98,0,minutes_until_next_daily(17,7)))
+print(minutes_until_next_daily(4,30))
+print(predict_future_stamina(64,0,minutes_until_next_daily(4,30)))
+print(calculate_burn(64,0,minutes_until_next_daily(4,30)))
