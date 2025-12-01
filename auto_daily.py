@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import sys
 import traceback
 
 from ok import Logger
@@ -26,6 +27,7 @@ logger = Logger.get_logger(__name__)
 
 
 RUN_MODE = "daily"
+SHUTDOWN_EXIT_CODE = 64  # bit flag added to exit code when shutdown is requested
 
 
 def apply_daily_config(sheet_config: SheetRunConfig, daily_task: DailyTask) -> None:
@@ -39,7 +41,7 @@ def apply_daily_config(sheet_config: SheetRunConfig, daily_task: DailyTask) -> N
     )
 
 
-def run() -> None:
+def run() -> tuple[RunResult, SheetRunConfig]:
     sheet_client = GoogleSheetClient()
     sheet_config = sheet_client.fetch_run_config()
 
@@ -64,7 +66,7 @@ def run() -> None:
         logger.info(f"MY-OK_WW: Skipping run because {skip_reason}")
         sheet_client.append_run_result(result)
         send_summary_email(result, sheet_config, RUN_MODE)
-        return
+        return result, sheet_config
 
     ok = None
     daily_task: DailyTask | None = None
@@ -102,7 +104,12 @@ def run() -> None:
     sheet_client.append_run_result(result)
     update_sheet_stamina(sheet_client, result)
     send_summary_email(result, sheet_config, RUN_MODE)
+    return result, sheet_config
 
 
 if __name__ == "__main__":
-    run()
+    result, sheet_config = run()
+    exit_code = 0 if result.status != "failed" else 1
+    if sheet_config.shutdown_after_daily:
+        exit_code |= SHUTDOWN_EXIT_CODE
+    sys.exit(exit_code)

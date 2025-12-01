@@ -28,6 +28,8 @@ class SheetRunConfig:
     run_stamina: bool
     run_nightmare: bool
     tacet_serial: int
+    shutdown_after_daily: bool = False
+    shutdown_after_stamina: bool = False
     tacet_name: str = ""
     tacet_set1: str = ""
     tacet_set2: str = ""
@@ -131,14 +133,18 @@ class GoogleSheetClient:
         run_stamina = _get_bool(pairs, {"体力任务"})
         tacet_serial = _get_int(pairs, {"序号"}, default=1)
         run_nightmare = _get_bool(pairs, {"梦魇巢穴"})
-        tacet_name = _get_str(pairs, {"无音区选择", "Tacet Name"})
-        tacet_set1 = _get_str(pairs, {"套装1", "Tacet Set 1"})
-        tacet_set2 = _get_str(pairs, {"套装2", "Tacet Set 2"})
+        shutdown_after_daily = _get_bool(pairs, {"日常后关机"})
+        shutdown_after_stamina = _get_bool(pairs, {"体力后关机"})
+        tacet_name = _get_str(pairs, {"无音区选择"})
+        tacet_set1 = _get_str(pairs, {"套装1"})
+        tacet_set2 = _get_str(pairs, {"套装2"})
         return SheetRunConfig(
             run_daily=run_daily,
             run_stamina=run_stamina,
             run_nightmare=run_nightmare,
             tacet_serial=tacet_serial,
+            shutdown_after_daily=shutdown_after_daily,
+            shutdown_after_stamina=shutdown_after_stamina,
             tacet_name=tacet_name,
             tacet_set1=tacet_set1,
             tacet_set2=tacet_set2,
@@ -229,8 +235,8 @@ if __name__ == "__main__":
     print(json.dumps(config.__dict__, ensure_ascii=False, indent=2))
 
     # Flip these to True when you want to manually exercise write paths.
-    run_append_daily = True
-    run_append_stamina = True
+    run_append_daily = False
+    run_append_stamina = False
     run_update_stamina_example = False
 
     now = dt.datetime.now()
