@@ -204,7 +204,8 @@ def _format_duration(total_seconds: int) -> str:
 def _get_bool(pairs: list[tuple[str, str]], names: set[str], default: bool = False) -> bool:
     for key, val in pairs:
         if key in names:
-            return str(val).strip().lower() in {"true", "1", "yes", "y"}
+            normalized = str(val).strip().lower()
+            return normalized in {"true", "1", "yes", "y", "是"}
     return default
 
 
