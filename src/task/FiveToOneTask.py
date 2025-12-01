@@ -1,5 +1,8 @@
+import cv2
+import numpy as np
+
 import re
-from ok import Logger
+from ok import find_boxes_by_name, find_boxes_within_boundary, Logger
 from src.task.BaseCombatTask import BaseCombatTask
 
 logger = Logger.get_logger(__name__)
@@ -14,8 +17,37 @@ class FiveToOneTask(BaseCombatTask):
         self.name = "数据坞五合一"
         self.default_config = {
         }
+        self.sets = [
+            '凝夜白霜', '熔山裂谷', '彻空冥雷', '啸谷长风', '浮星祛暗', '沉日劫明', '隐世回光', '轻云出月', '不绝余音',
+            '凌冽决断之心',
+            '此间永驻之光', '幽夜隐匿之帷', '高天共奏之曲', '无惧浪涛之勇', '流云逝尽之空', '愿戴荣光之旅',
+            '奔狼燎原之焰', ]
+
+        self.main_stats = ["攻击力百分比", "生命值百分比", "防御力百分比", "暴击率", "暴击伤害", "共鸣效率",
+                           "冷凝伤害加成",
+                           "热熔伤害加成",
+                           "导电伤害加成",
+                           "气动伤害加成", "衍射伤害加成", "湮灭伤害加成", "治疗效果加成"]
+        self.all_stats = []
+        self.black_list = ["主属性生命值", "主属性攻击力", "主属性防御力"]
+        for main_stat in self.main_stats:
+            self.all_stats.append(re.compile("主属性" + main_stat))
+        for black in self.black_list:
+            self.all_stats.append(re.compile(black))
+
+        self.add_text_fix(
+            {'凝夜自霜': '凝夜白霜', '主属性灭伤害加成': '主属性湮灭伤害加成', "灭伤害加成": "主属性湮灭伤害加成",
+             '主属性行射伤害加成': '主属性衍射伤害加成'})
+
+        self.config_type = {}
+        self.claim_handled = False
+        for set_name in self.sets:
+            self.default_config[set_name] = []
+        for key in self.default_config.keys():
+            self.config_type[key] = {'type': "multi_selection", 'options': self.main_stats}
 
     def run(self):
+        self.log_debug(f"all_stats: {self.all_stats}")
         self.log_info("开始任务")
         self.ensure_main()
         self.log_info("在主页")
