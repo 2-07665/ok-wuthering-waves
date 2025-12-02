@@ -10,10 +10,8 @@ from auto import (
     bootstrap_ok,
     fill_stamina_from_live,
     read_live_stamina,
-    require_task,
     run_onetime_task,
     send_summary_email,
-    stop_game,
     update_sheet_stamina,
 )
 from manage_google_sheet import GoogleSheetClient, RunResult, SheetRunConfig
@@ -118,9 +116,9 @@ def run() -> tuple[RunResult, SheetRunConfig]:
     try:
         ok = bootstrap_ok()
         executor = ok.task_executor
-        bootstrap_task = require_task(executor, BootstrapMainTask)
+        bootstrap_task = executor.get_task_by_class(BootstrapMainTask)
         run_onetime_task(executor, bootstrap_task, timeout=bootstrap_task.config.get("Main Timeout", 600))
-        stamina_task = require_task(executor, TacetTask)
+        stamina_task = executor.get_task_by_class(TacetTask)
         stamina_task.info_clear()
 
         current, backup = read_live_stamina(ok, stamina_task)
@@ -151,7 +149,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.ended_at = dt.datetime.now()
         if ok is not None:
             ok.task_executor.stop()
-            stop_game(ok)
+            ok.device_manager.stop_hwnd()
             ok.quit()
 
     sheet_client.append_run_result(result)

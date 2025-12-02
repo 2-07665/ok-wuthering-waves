@@ -31,15 +31,7 @@ def bootstrap_ok() -> OK:
     cfg = dict(base_config)
     cfg["use_gui"] = False
     ok = OK(cfg)
-    ensure_game_running(ok, timeout=cfg.get("start_timeout", 120))
     return ok
-
-
-def require_task(executor, cls):
-    task = executor.get_task_by_class(cls)
-    if task is None:
-        raise RuntimeError(f"{cls.__name__} not available; check onetime_tasks in config.py")
-    return task
 
 
 def run_onetime_task(executor, task, *, timeout: int = 1800) -> None:
@@ -178,7 +170,6 @@ def ensure_game_running(ok: OK, timeout: int = 120) -> None:
     preferred = dm.get_preferred_device()
 
     if not preferred.get("connected"):
-        # Windows only; the configured calculate_pc_exe_path points to the fixed install.
         path = dm.get_exe_path(preferred)
         logger.info(f"Launching game from {path}")
         execute(path)
@@ -254,12 +245,3 @@ def _format_duration_seconds(start: dt.datetime, end: dt.datetime | None) -> str
     if seconds or not parts:
         parts.append(f"{seconds}s")
     return " ".join(parts)
-
-
-def stop_game(ok: OK) -> None:
-    """Terminate the game process once all tasks are finished."""
-    try:
-        if ok.device_manager:
-            ok.device_manager.stop_hwnd()
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Failed to stop game process", exc)
