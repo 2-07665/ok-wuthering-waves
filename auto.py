@@ -31,6 +31,7 @@ def bootstrap_ok() -> OK:
     cfg = dict(base_config)
     cfg["use_gui"] = False
     ok = OK(cfg)
+    ensure_game_running(ok)
     return ok
 
 
