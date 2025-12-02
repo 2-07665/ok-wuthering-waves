@@ -38,7 +38,7 @@ class BootstrapMainTask(WWOneTimeTask, BaseWWTask):
             self.log_info("Reached main screen")
             return
 
-        self.log_warning("Main screen not reached; restarting game once.")
+        self.log_info("Main screen not reached; restarting game once.")
         try:
             dm.stop_hwnd()
         except Exception as exc:  # noqa: BLE001

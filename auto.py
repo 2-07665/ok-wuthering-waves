@@ -206,10 +206,9 @@ def fill_stamina_from_live(ok: OK | None, result: RunResult, task: BaseWWTask | 
     logger.warning("Failed to capture stamina after task; values remain unknown.")
 
 
-def read_live_stamina(ok: OK, task: BaseWWTask | None = None) -> tuple[int | None, int | None]:
+def read_live_stamina(ok: OK, task: BaseWWTask) -> tuple[int | None, int | None]:
     """Open the stamina panel and return current/back-up stamina."""
     try:
-        task = task or require_task(ok.task_executor, TacetTask)
         for _ in range(2):
             task.ensure_main(time_out=60, esc=True)
             # Open the book (F2) to show stamina and read it, then close.
