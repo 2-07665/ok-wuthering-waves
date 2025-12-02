@@ -9,6 +9,7 @@ from ok import Logger
 
 from auto import (
     bootstrap_ok,
+    fill_stamina_from_live,
     read_live_stamina,
     require_task,
     run_onetime_task,
@@ -125,9 +126,6 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         current, backup = read_live_stamina(ok, stamina_task)
         result.stamina_start = current
         result.backup_start = backup if backup else 0
-        if current is not None and backup is not None:
-            result.stamina_left = current
-            result.backup_stamina = backup
 
         minutes_to_next = minutes_until_next_daily(DAILY_TARGET_HOUR, DAILY_TARGET_MINUTE)
         should_run, burn, projected_total, reason = calculate_burn(current, backup, minutes_to_next)
@@ -135,12 +133,11 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.decision = reason
         if should_run:
             apply_stamina_config(sheet_config, stamina_task, burn)
-
             run_onetime_task(executor, stamina_task, timeout=600)
 
             result.status = "success"
 
-            read_live_stamina(ok, result, task=stamina_task)
+            fill_stamina_from_live(ok, result, task=stamina_task)
             result.stamina_used = burn
         else:
             result.status = "skipped"
