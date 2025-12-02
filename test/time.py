@@ -1,5 +1,4 @@
 import datetime as dt
-from zoneinfo import ZoneInfo
 
 def predict_future_stamina(current: int, backup: int, minutes: int) -> tuple[int, int]:
     """Predict current/back-up stamina after `minutes` of regen."""
@@ -13,10 +12,9 @@ def predict_future_stamina(current: int, backup: int, minutes: int) -> tuple[int
     return current_after, backup_after
 
 
-def minutes_until_next_daily(
-    target_hour: int, target_minute: int, tz: dt.tzinfo = ZoneInfo("Asia/Shanghai")
-) -> int:
+def minutes_until_next_daily(target_hour: int, target_minute: int, tz: dt.tzinfo | None = None) -> int:
     """Compute minutes until the next target time in the given timezone (defaults to 24h later)."""
+    tz = tz or dt.timezone(dt.timedelta(hours=8))
     now = dt.datetime.now(tz)
     target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
     if target <= now:
