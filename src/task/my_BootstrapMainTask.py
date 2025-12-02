@@ -6,6 +6,7 @@ from ok import Logger, og
 from src.task.BaseWWTask import BaseWWTask
 from src.task.WWOneTimeTask import WWOneTimeTask
 
+from auto import ensure_game_running
 
 logger = Logger.get_logger(__name__)
 
@@ -33,10 +34,6 @@ class BootstrapMainTask(WWOneTimeTask, BaseWWTask):
         main_timeout = self.config.get("Main Timeout", self.executor.config.get("main_timeout", 600))
         retry_timeout = min(main_timeout, 180)
 
-        self.log_info("Ensuring game window is ready")
-        from auto import ensure_game_running
-        ensure_game_running(og.ok, timeout=start_timeout)
-
         if self._attempt_main(main_timeout):
             self.log_info("Reached main screen")
             return
@@ -49,20 +46,12 @@ class BootstrapMainTask(WWOneTimeTask, BaseWWTask):
         time.sleep(5)
 
         ensure_game_running(og.ok, timeout=start_timeout)
-
-        #self._init_ocr()
         
         if self._attempt_main(retry_timeout):
             self.log_info("Reached main screen after restart")
             return
 
         raise Exception("Failed to reach main screen after restart")
-
-    def _init_ocr(self) -> None:
-        try:
-            self.executor.ocr_lib()
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Failed to initialize OCR; login detection may be unreliable.", exc)
 
     def _attempt_main(self, total_timeout: int) -> bool:
         try:
