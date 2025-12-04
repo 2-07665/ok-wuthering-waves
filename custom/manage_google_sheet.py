@@ -9,9 +9,9 @@ from typing import Iterable, List, Sequence
 import gspread
 from google.oauth2.service_account import Credentials
 
-ROOT = Path(__file__).resolve().parent
-SERVICE_ACCOUNT_FILE = ROOT / "credentials" / "google-api.json"
-SPREADSHEET_ID = (ROOT / "credentials" / "google-sheet-id.txt").read_text(encoding="utf-8").strip()
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SERVICE_ACCOUNT_FILE = PROJECT_ROOT / "credentials" / "google-api.json"
+SPREADSHEET_ID = (PROJECT_ROOT / "credentials" / "google-sheet-id.txt").read_text(encoding="utf-8").strip()
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets"

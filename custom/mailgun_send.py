@@ -8,10 +8,10 @@ from typing import Any, Mapping
 
 import requests
 
-ROOT = Path(__file__).resolve().parent
-MAILGUN_CONFIG = ROOT / "credentials" / "mailgun-api.txt"
-MAILGUN_TEMPLATE_DAILY = ROOT / "templates" / "mailgun_daily.html"
-MAILGUN_TEMPLATE_STAMINA = ROOT / "templates" / "mailgun_stamina.html"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+MAILGUN_CONFIG = PROJECT_ROOT / "credentials" / "mailgun-api.txt"
+MAILGUN_TEMPLATE_DAILY = PROJECT_ROOT / "custom" / "email_templates" / "mailgun_daily.html"
+MAILGUN_TEMPLATE_STAMINA = PROJECT_ROOT / "custom" / "email_templates" / "mailgun_stamina.html"
 
 
 def load_mailgun_config(path: Path = MAILGUN_CONFIG) -> tuple[str, str, str]:

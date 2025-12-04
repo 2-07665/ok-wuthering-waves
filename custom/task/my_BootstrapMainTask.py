@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import time
-
-from ok import Logger, og
+from ok import Logger
 from src.task.BaseWWTask import BaseWWTask
 from src.task.WWOneTimeTask import WWOneTimeTask
 
-from auto import ensure_game_running
+from custom.auto import ensure_game_running
 
 logger = Logger.get_logger(__name__)
 

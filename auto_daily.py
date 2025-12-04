@@ -6,7 +6,7 @@ import traceback
 
 from ok import Logger
 
-from auto import (
+from custom.auto import (
     backfill_stamina_used_from_totals,
     bootstrap_ok,
     fill_stamina_from_live,
@@ -16,8 +16,8 @@ from auto import (
     send_summary_email,
     update_sheet_stamina,
 )
-from manage_google_sheet import GoogleSheetClient, RunResult, SheetRunConfig
-from src.task.my_BootstrapMainTask import BootstrapMainTask
+from custom.manage_google_sheet import GoogleSheetClient, RunResult, SheetRunConfig
+from custom.task.my_BootstrapMainTask import BootstrapMainTask
 from src.task.DailyTask import DailyTask
 
 

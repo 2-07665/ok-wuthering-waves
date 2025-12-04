@@ -92,11 +92,11 @@ config = {
     'launcher_error_log_file': 'logs/launcher_error.log',
     'version': version,
     'onetime_tasks': [  # tasks to execute
-        ["src.task.my_BootstrapMainTask", "BootstrapMainTask"],
+        ["custom.task.my_BootstrapMainTask", "BootstrapMainTask"],
         ["src.task.DailyTask", "DailyTask"],
         ["src.task.TacetTask", "TacetTask"],
         ["src.task.NightmareNestTask", "NightmareNestTask"],
-        ["src.task.my_FastFarmEchoTask", "FastFarmEchoTask"],
+        ["custom.task.my_FastFarmEchoTask", "FastFarmEchoTask"],
     ], 'trigger_tasks': [
         ["src.task.MouseResetTask", "MouseResetTask"],
     ], 'scene': ["src.scene.WWScene", "WWScene"],
