@@ -140,6 +140,8 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         else:
             result.status = "skipped"
             result.stamina_used = 0
+            result.stamina_left = result.stamina_start
+            result.backup_stamina = result.backup_start
             logger.info(f"MY-OK-WW: Skipping run: {reason}")
     except Exception as exc:  # noqa: BLE001
         result.status = "failed"
