@@ -51,7 +51,7 @@ config = {
     },
     'my_app': ['src.globals', 'Globals'],
     'start_timeout': 120,  # default 60
-    'main_timeout': 600,  # allow time for updates/login during bootstrap
+    'main_timeout': 120,
     'wait_until_settle_time': 0,
     # required if using feature detection
     'template_matching': {

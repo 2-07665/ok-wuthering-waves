@@ -22,35 +22,16 @@ class BootstrapMainTask(WWOneTimeTask, BaseWWTask):
         self.icon = None
         self.supported_languages = []
         self.default_config = {
-            "Main Timeout": 600,
-            "Start Timeout": 120,
+            "Main Timeout": 120,
         }
 
     def run(self):
         WWOneTimeTask.run(self)
-
-        dm = self.executor.device_manager
-        start_timeout = self.config.get("Start Timeout", self.executor.config.get("start_timeout", 120))
-        main_timeout = self.config.get("Main Timeout", self.executor.config.get("main_timeout", 600))
-        retry_timeout = min(main_timeout, 180)
+        main_timeout = self.config.get("Main Timeout", self.executor.config.get("main_timeout", 120))
 
         if self._attempt_main(main_timeout):
             self.log_info("Reached main screen")
             return
-
-        self.log_info("Main screen not reached; restarting game once.")
-        try:
-            dm.stop_hwnd()
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Failed to stop game before restart", exc)
-        time.sleep(5)
-
-        ensure_game_running(og.ok, timeout=start_timeout)
-        
-        if self._attempt_main(retry_timeout):
-            self.log_info("Reached main screen after restart")
-            return
-
         raise Exception("Failed to reach main screen after restart")
 
     def _attempt_main(self, total_timeout: int) -> bool:
