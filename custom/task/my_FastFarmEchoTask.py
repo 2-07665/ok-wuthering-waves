@@ -175,18 +175,17 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
         farm_start = self._farm_start_time or self.start_time or time.time()
         farm_end = self._farm_end_time or time.time()
         merge_count = self.info.get("total merge count", 0)
-        # Teleport to a safe point via F2 book.
+        # Teleport to a safe point via F2 book (single attempt).
         try:
             self._teleport_to_safe_point()
         except Exception as exc:  # noqa: BLE001
             self.log_error("Teleport to safe point failed", exc)
-            success = False
-            self._last_error = self._last_error or f"Teleport failed: {exc}"
+            if not self._last_error:
+                self._last_error = f"Teleport failed: {exc}"
         # Optionally run five-to-one task.
         if self.config.get('Run FiveToOne After Farm', True):
-            # Give the game time to finish loading after teleport.
-            self.wait_in_team_and_world(time_out=120, raise_if_not_found=False)
-            self.sleep(5)
+            self.ensure_main(time_out=120)
+            self.sleep(2)
             try:
                 self.run_task_by_class(FiveToOneTask)
                 merge_count = self.info.get("total merge count", merge_count)
@@ -201,15 +200,6 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
             success=success,
             merge_count=merge_count,
         )
-
-    def _teleport_to_safe_point(self):
-        gray_book_boss = self.openF2Book("gray_book_boss")
-        self.click_box(gray_book_boss, after_sleep=1)
-        # Open Tacet tab and teleport to the first entry as a safe point.
-        self.click_relative(0.18, 0.48, after_sleep=1)
-        self.click_on_book_target(1, 12)
-        self.wait_click_travel()
-        self.wait_in_team_and_world(time_out=120, raise_if_not_found=False)
 
     def _report_to_sheet(self, farm_start: float, farm_end: float, success: bool, merge_count: int):
         fight_count = int(self.info.get("Combat Count", 0) or 0)
@@ -256,3 +246,16 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
                 return f.read().strip()
         except Exception:
             return ""
+
+    def _teleport_to_safe_point(self):
+        """
+        Use the Tacet tab travel flow to teleport to the first Tacet as a safe point (single try).
+        """
+        self.ensure_main(time_out=60)
+        gray_book_boss = self.openF2Book("gray_book_boss")
+        self.click_box(gray_book_boss, after_sleep=1)
+        # Open Tacet tab and select the first entry.
+        self.click_relative(0.18, 0.48, after_sleep=1)
+        self.click_on_book_target(1, 12)
+        self.wait_click_travel()
+        self.wait_in_team_and_world(time_out=30, raise_if_not_found=False)
