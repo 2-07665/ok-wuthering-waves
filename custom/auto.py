@@ -34,6 +34,34 @@ def bootstrap_ok() -> OK:
     return ok
 
 
+def ensure_game_running(ok: OK, timeout: int = 120) -> None:
+    """Start the game if needed and wait until capture/interaction are ready."""
+    dm = ok.device_manager
+    dm.do_refresh(True)
+    preferred = dm.get_preferred_device()
+
+    if not preferred.get("connected"):
+        path = dm.get_exe_path(preferred)
+        logger.info(f"MY-OK-WW: Launching game from {path}")
+        execute(path)
+
+    end_time = time.time() + timeout
+    while time.time() < end_time:
+        dm.do_refresh(True)
+        preferred = dm.get_preferred_device()
+        capture_ready = (
+            preferred
+            and preferred.get("connected")
+            and dm.capture_method is not None
+            and dm.capture_method.connected()
+        )
+        interaction_ready = dm.interaction is not None
+        if capture_ready and interaction_ready:
+            return
+        time.sleep(3)
+    raise RuntimeError("MY-OK-WW: Game window not ready within timeout.")
+
+
 def run_onetime_task(executor, task, *, timeout: int = 1800) -> None:
     task.enable()
     task.unpause()
@@ -161,34 +189,6 @@ def update_sheet_stamina(sheet_client: GoogleSheetClient, result: RunResult) -> 
         sheet_client.update_stamina(result.stamina_left, result.backup_stamina, result.ended_at or dt.datetime.now())
     except Exception as exc:  # noqa: BLE001
         logger.error("MY-OK-WW: Failed to update stamina on sheet", exc)
-
-
-def ensure_game_running(ok: OK, timeout: int = 120) -> None:
-    """Start the game if needed and wait until capture/interaction are ready."""
-    dm = ok.device_manager
-    dm.do_refresh(True)
-    preferred = dm.get_preferred_device()
-
-    if not preferred.get("connected"):
-        path = dm.get_exe_path(preferred)
-        logger.info(f"Launching game from {path}")
-        execute(path)
-
-    end_time = time.time() + timeout
-    while time.time() < end_time:
-        dm.do_refresh(True)
-        preferred = dm.get_preferred_device()
-        capture_ready = (
-            preferred
-            and preferred.get("connected")
-            and dm.capture_method is not None
-            and dm.capture_method.connected()
-        )
-        interaction_ready = dm.interaction is not None
-        if capture_ready and interaction_ready:
-            return
-        time.sleep(2)
-    raise RuntimeError("Game window not ready within timeout.")
 
 
 def fill_stamina_from_live(ok: OK | None, result: RunResult, task: BaseWWTask | None = None) -> None:

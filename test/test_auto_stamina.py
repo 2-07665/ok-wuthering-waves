@@ -12,7 +12,7 @@ from custom.auto import (
     run_onetime_task,
 )
 from custom.manage_google_sheet import GoogleSheetClient, RunResult, SheetRunConfig
-from custom.task.my_BootstrapMainTask import BootstrapMainTask
+from custom.task.my_LoginTask import LoginTask
 from src.task.TacetTask import TacetTask
 
 
@@ -110,8 +110,12 @@ def run() -> tuple[RunResult, SheetRunConfig]:
     try:
         ok = bootstrap_ok()
         executor = ok.task_executor
-        bootstrap_task = executor.get_task_by_class(BootstrapMainTask)
-        run_onetime_task(executor, bootstrap_task, timeout=bootstrap_task.config.get("Main Timeout", 600))
+        login_task = executor.get_task_by_class(LoginTask)
+        run_onetime_task(
+            executor,
+            login_task,
+            timeout=login_task.config.get("Login Timeout", login_task.executor.config.get("login_timeout", 600)),
+        )
         stamina_task = executor.get_task_by_class(TacetTask)
         stamina_task.info_clear()
 

@@ -17,7 +17,7 @@ from custom.auto import (
     update_sheet_stamina,
 )
 from custom.manage_google_sheet import GoogleSheetClient, RunResult, SheetRunConfig
-from custom.task.my_BootstrapMainTask import BootstrapMainTask
+from custom.task.my_LoginTask import LoginTask
 from src.task.DailyTask import DailyTask
 
 
@@ -71,8 +71,12 @@ def run() -> tuple[RunResult, SheetRunConfig]:
     try:
         ok = bootstrap_ok()
         executor = ok.task_executor
-        bootstrap_task = executor.get_task_by_class(BootstrapMainTask)
-        run_onetime_task(executor, bootstrap_task, timeout=bootstrap_task.config.get("Main Timeout", 600)) #not checked yet
+        login_task = executor.get_task_by_class(LoginTask)
+        run_onetime_task(
+            executor,
+            login_task,
+            timeout=login_task.config.get("Login Timeout", login_task.executor.config.get("login_timeout", 600)),
+        ) #not checked yet
         daily_task = executor.get_task_by_class(DailyTask)
         apply_daily_config(sheet_config, daily_task)
         result.decision = "执行日常任务"

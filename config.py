@@ -51,7 +51,7 @@ config = {
     },
     'my_app': ['src.globals', 'Globals'],
     'start_timeout': 120,  # default 60
-    'main_timeout': 120,
+    'login_timeout': 180,
     'wait_until_settle_time': 0,
     # required if using feature detection
     'template_matching': {
@@ -92,7 +92,7 @@ config = {
     'launcher_error_log_file': 'logs/launcher_error.log',
     'version': version,
     'onetime_tasks': [  # tasks to execute
-        ["custom.task.my_BootstrapMainTask", "BootstrapMainTask"],
+        ["custom.task.my_LoginTask", "LoginTask"],
         ["src.task.DailyTask", "DailyTask"],
         ["src.task.TacetTask", "TacetTask"],
         ["src.task.NightmareNestTask", "NightmareNestTask"],
