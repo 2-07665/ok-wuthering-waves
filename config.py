@@ -97,6 +97,7 @@ config = {
         ["src.task.TacetTask", "TacetTask"],
         ["src.task.NightmareNestTask", "NightmareNestTask"],
         ["custom.task.my_FastFarmEchoTask", "FastFarmEchoTask"],
+        ["custom.task.my_FiveToOneTask", "FiveToOneTask"],
     ], 'trigger_tasks': [
         ["src.task.MouseResetTask", "MouseResetTask"],
     ], 'scene': ["src.scene.WWScene", "WWScene"],

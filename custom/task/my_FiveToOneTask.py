@@ -2,21 +2,26 @@ import re
 from ok import Logger
 from src.task.BaseCombatTask import BaseCombatTask
 
+from qfluentwidgets import FluentIcon
+
 logger = Logger.get_logger(__name__)
-chinese_regex = re.compile(r'[\u4e00-\u9fff]{5,12}')
 
 
 class FiveToOneTask(BaseCombatTask):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.description = "游戏语言必须为简体中文,必须16:9分辨率,使用1600x900以上分辨率, 勾选需要的, 没勾的都会自动合成"
+        self.description = "自动五合一已弃置声骸"
         self.name = "数据坞五合一"
+        self.group_name = "Farm"
+        self.group_icon = FluentIcon.SYNC
+        self.icon = FluentIcon.ALBUM
         self.default_config = {
         }
 
     def run(self):
-        self.log_info("开始任务")
+        self.log_info("开始五合一任务")
+        self.info_set("total merge count", 0)
         self.ensure_main()
         self.log_info("在主页")
         self.sleep(0.1)
@@ -24,85 +29,65 @@ class FiveToOneTask(BaseCombatTask):
         self.wait_click_ocr(match="数据坞", box="right", raise_if_not_found=True, settle_time=0.2)
         self.wait_ocr(match="数据坞", box="top_left", raise_if_not_found=True, settle_time=0.2)
         self.click_relative(0.04, 0.56, after_sleep=0.5)
-        self.wait_click_ocr(match="批量融合", box="bottom_right", raise_if_not_found=True, settle_time=0.2,
-                            after_sleep=1)
         self.loop_merge()
         self.log_info("五合一完成!")
 
     def loop_merge(self):
-        name_box = self.box_of_screen(0.11, 0.19, 0.87, 0.75)
-        for set_name in self.sets:
-            self.merge_set(name_box, set_name, 1)
-            self.merge_set(name_box, set_name, 2)
-
-    def ocr_main_stats(self):
-        name_box = self.box_of_screen(0.11, 0.19, 0.87, 0.75)
-        return self.ocr(box=name_box, threshold=0.1)
-
-    def merge_set(self, name_box, set_name, step):
-        keeps = self.config.get(set_name, [])
-        self.log_info(f'keeps: {len(keeps)} set_name: {set_name} keep: {keeps}')
-        if len(keeps) == 13:
-            self.log_info('保存所有, 跳过')
-            return
-        if step == 2 and "攻击力百分比" not in keeps:  # 4C攻击力
-            self.log_info("没有选择攻击力百分比, 跳过第二步")
-            return
-        self.click_relative(0.04, 0.91, after_sleep=0.3)
-        if step == 1:
-            self.click_relative(0.62, 0.82, after_sleep=0.01)  # 重置
-
-        self.click_relative(0.20, 0.71, after_sleep=0.01)  # 1c
-        self.click_relative(0.47, 0.71, after_sleep=0.01)  # 3c
-        if step == 1:
-            self.click_relative(0.71, 0.71, after_sleep=0.01)  # 4c
-        if step == 1:
-            self.click_relative(0.895, 0.55, after_sleep=0.5)  # 滚动
-            # self.log_debug('wait click set {}'.format(set_name))
-            # self.ocr(box=name_box, threshold=0.1, log=True)
-            self.wait_click_ocr(box=name_box, match=re.compile(set_name), raise_if_not_found=True,
-                                after_sleep=0.2)
-            self.wait_feature("merge_echo_check", box=name_box, raise_if_not_found=True)
-        self.click_relative(0.895, 0.74, after_sleep=0.5)  # 滚动
-        choices = self.ocr(box=name_box, match=self.all_stats)
-        if step == 1:
-            if len(choices) != 16:
-                raise Exception(f"属性列表识别失败! {choices}")
-            for choice in choices:
-                in_keep = False
-                in_black_list = False
-                for black in self.black_list:
-                    if black in choice.name and "百分比" not in choice.name:
-                        in_black_list = True
-                        break
-                if in_black_list:
-                    self.log_debug(f'跳过黑名单 {choice.name}')
-                    continue
-                for keep in keeps:
-                    if keep in choice.name:
-                        in_keep = True
-                        break
-                if not in_keep:
-                    self.click_box(choice, after_sleep=0.01)
-                    self.log_info(f"不在配置 {set_name} {choice.name} 选择合成!")
-        else:
-            for choice in choices:
-                if "攻击力百分比" in choice.name:
-                    self.click_box(choice, after_sleep=0.01)
-                    break
-        self.click_relative(0.81, 0.84, after_sleep=0.5)
+        """
+        Enter batch merge, select all, consume merges until no merges remain.
+        """
         while True:
-            self.click_relative(0.26, 0.91, after_sleep=0.5)  # 全选
-            self.click_relative(0.78, 0.9, after_sleep=1)
-            if not self.claim_handled:
-                if confirm := self.ocr(match="确认", box="bottom_right"):
-                    self.click_relative(0.49, 0.55, after_sleep=0.1)
-                    self.click_box(confirm, after_sleep=0.5)
-                    self.claim_handled = True
-            if self.ocr(match="批量融合", box="bottom_right"):
-                self.click_relative(0.26, 0.91, after_sleep=0.5)
-                self.log_info(f"{set_name} 不够5个")
-                break  # 没有更多
-            self.wait_ocr(match="获得声骸", box="top", raise_if_not_found=True, settle_time=1)
+            in_merge_page = bool(self.ocr(match="全选", box="bottom_left"))
+            if not in_merge_page:
+                if not self.wait_click_ocr(match="批量融合", box="right", raise_if_not_found=False, settle_time=0.2,
+                                           after_sleep=0.5):
+                    self.log_info("未找到批量融合入口，结束任务")
+                    return
+
+            if not self.wait_click_ocr(match="全选", box="bottom_left", raise_if_not_found=False, settle_time=0.2,
+                                       after_sleep=0.3):
+                self.log_info("未找到全选按钮，结束任务")
+                return
+
+            merge_count = self._read_merge_count()
+            if merge_count is None:
+                self.log_info("无法识别数据融合次数，结束任务")
+                return
+            self.info_set("remaining merge count", merge_count)
+            if merge_count == 0:
+                self.log_info("没有可用的数据融合次数，结束任务")
+                return
+
+            self.wait_click_ocr(match="批量融合", box="bottom_right", raise_if_not_found=True, settle_time=0.2,
+                                after_sleep=0.5)
+            confirm_box = self.box_of_screen(0.59, 0.59, 0.75, 0.66)
+            self.wait_click_ocr(match="确认", box=confirm_box, raise_if_not_found=True, settle_time=0.1,
+                                after_sleep=0.5)
+            self.wait_ocr(match="获得声骸", box="top", raise_if_not_found=False, settle_time=1)
+            self.info_incr("total merge count", merge_count)
             self.click_relative(0.53, 0.05, after_sleep=0.5)
-            self.click_relative(0.68, 0.91, after_sleep=0.5)  # 批量融合
+
+    def _read_merge_count(self):
+        """
+        Read the current merge count from the bottom-right text "数据融合次数：num".
+        """
+        result = self.ocr(box="bottom_right", match=re.compile(r"数据融合次数[:：]\s*\d+"))
+        if not result:
+            return None
+
+        text = None
+        if isinstance(result, list):
+            text = result[0].name if result and hasattr(result[0], "name") else None
+        elif hasattr(result, "name"):
+            text = result.name
+        if not text:
+            return None
+
+        match = re.search(r"数据融合次数[:：]\s*(\d+)", text)
+        if not match:
+            return None
+
+        try:
+            return int(match.group(1))
+        except ValueError:
+            return None

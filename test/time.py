@@ -44,5 +44,5 @@ def calculate_burn(current: int | None, backup: int | None, minutes_to_next: int
     return True, burn, future_total - burn, f"预计至下次日常有 {future_total} 体力，消耗至约 {future_total - burn}"
 
 print(minutes_until_next_daily(4,30))
-print(predict_future_stamina(64,0,minutes_until_next_daily(4,30)))
-print(calculate_burn(64,0,minutes_until_next_daily(4,30)))
+print(predict_future_stamina(103,0,minutes_until_next_daily(4,30)))
+print(calculate_burn(103,0,minutes_until_next_daily(4,30)))
