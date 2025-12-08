@@ -61,7 +61,7 @@ class FiveToOneTask(BaseCombatTask):
             self.wait_click_ocr(match="批量融合", box="bottom_right", raise_if_not_found=True, settle_time=0.2,
                                 after_sleep=0.5)
             confirm_box = self.box_of_screen(0.59, 0.59, 0.75, 0.66)
-            self.wait_click_ocr(match="确认", box=confirm_box, raise_if_not_found=True, settle_time=0.1,
+            self.wait_click_ocr(match="确认", box=confirm_box, raise_if_not_found=False, settle_time=0.2,
                                 after_sleep=0.5)
             self.wait_ocr(match="获得声骸", box="top", raise_if_not_found=False, settle_time=1)
             self.info_incr("Merge Count", merge_count)
