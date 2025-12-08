@@ -19,7 +19,7 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
     - Echo pickup is just pressing the interact key after each kill
     - Supports multi-loop runs with per-loop reporting to Sheets
     """
-    INFO_ORDER = ('Loop', 'Loop Fights', 'Fights per Hour', 'Remaining Time', 'Combat Count', 'Total Merge Count', 'Log')
+    INFO_ORDER = ('Loop', 'Loop Fights', 'Fights per Hour', 'Remaining Time', 'Combat Count', 'Merge Count', 'Total Merge Count', 'Log')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -44,8 +44,6 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
         self._any_reports_sent = False
         self._post_actions_executed = False
         self._loop_combat_baseline = 0
-        self._loop_merge_baseline = 0
-        self._run_merge_baseline = 0
         self._loop_target_fights = 0
 
     def run(self):
@@ -59,6 +57,7 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
         self._post_actions_executed = False
 
         self.info_set("Total Merge Count", 0)
+        self.info_set("Merge Count", 0)
         self.info_set("Combat Count", 0)
         self._ensure_info_layout()
         
@@ -82,7 +81,6 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
                         farm_start=self._loop_start_time,
                         farm_end=self._loop_end_time,
                         success=success,
-                        merge_start_count=self._run_merge_baseline,
                         fight_count=int(self.info.get("Combat Count", 0) or 0),
                         fight_speed=int(self.info.get("Fights per Hour", 0) or 0),
                         report=not self._any_reports_sent,
@@ -126,7 +124,7 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
         self._loop_start_time = time.time()
         self._last_error = ""
         self._loop_combat_baseline = int(self.info.get('Combat Count', 0) or 0)
-        self._loop_merge_baseline = int(self.info.get('Total Merge Count', 0) or 0)
+        self.info_set('Merge Count', 0)
         self._prime_loop_info(loop_number, total_loops, fights_per_loop)
 
     def _prime_loop_info(self, loop_number: int, total_loops: int, fights_per_loop: int) -> None:
@@ -147,7 +145,6 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
             farm_start=self._loop_start_time,
             farm_end=self._loop_end_time,
             success=loop_success,
-            merge_start_count=self._loop_merge_baseline,
             fight_count=loop_fights,
             fight_speed=loop_speed,
             report=True,
@@ -209,7 +206,6 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
         farm_start: float,
         farm_end: float,
         success: bool,
-        merge_start_count: int,
         fight_count: int | None = None,
         fight_speed: int | None = None,
         report: bool = True,
@@ -220,10 +216,9 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
         """
         farm_start = farm_start or self._run_start_time or self.start_time or time.time()
         farm_end = farm_end or time.time()
-        merge_start = int(merge_start_count or 0)
         fight_count = int(fight_count if fight_count is not None else self._current_loop_fights())
         fight_speed = int(fight_speed if fight_speed is not None else (self.info.get("Fights per Hour", 0) or 0))
-        merge_count_after = int(self.info.get("Total Merge Count", 0) or 0)
+        loop_merge_count = int(self.info.get("Merge Count", 0) or 0)
         self._post_actions_executed = True
         # wait to die and revive
         self.sleep(300)
@@ -234,18 +229,19 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
             self.sleep(2)
             try:
                 self.run_task_by_class(FiveToOneTask)
-                merge_count_after = int(self.info.get("Total Merge Count", merge_count_after) or merge_count_after)
+                loop_merge_count = int(self.info.get("Merge Count", loop_merge_count) or loop_merge_count)
             except Exception as exc:  # noqa: BLE001
                 self.log_error("FiveToOneTask failed", exc)
                 success = False
                 self._last_error = (self._last_error + "; " if self._last_error else "") + f"FiveToOneTask: {exc}"
-        merge_delta = max(merge_count_after - merge_start, 0)
+        total_merge_count = int(self.info.get("Total Merge Count", 0) or 0) + loop_merge_count
+        self.info_set("Total Merge Count", total_merge_count)
         if report:
             self._report_to_sheet(
                 farm_start=farm_start,
                 farm_end=farm_end,
                 success=success,
-                merge_count=merge_delta,
+                merge_count=loop_merge_count,
                 fight_count=fight_count,
                 fight_speed=fight_speed,
             )

@@ -22,7 +22,7 @@ class FiveToOneTask(BaseCombatTask):
 
     def run(self):
         self.log_info("开始五合一任务")
-        self.info_set("Total Merge Count", 0)
+        self.info_set("Merge Count", 0)
         self.ensure_main()
         self.log_info("在主页")
         self.sleep(0.1)
@@ -64,7 +64,7 @@ class FiveToOneTask(BaseCombatTask):
             self.wait_click_ocr(match="确认", box=confirm_box, raise_if_not_found=True, settle_time=0.1,
                                 after_sleep=0.5)
             self.wait_ocr(match="获得声骸", box="top", raise_if_not_found=False, settle_time=1)
-            self.info_incr("Total Merge Count", merge_count)
+            self.info_incr("Merge Count", merge_count)
             self.click_relative(0.53, 0.05, after_sleep=0.5)
 
     def _read_merge_count(self):
