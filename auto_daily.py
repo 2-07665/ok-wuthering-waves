@@ -106,7 +106,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
     sheet_client.append_run_result(result)
     update_sheet_stamina(sheet_client, result)
-    #send_summary_email(result, sheet_config, RUN_MODE)
+    send_summary_email(result, sheet_config, RUN_MODE)
     return result, sheet_config
 
 
