@@ -11,6 +11,7 @@ from custom.auto import (
     bootstrap_ok,
     fill_stamina_from_live,
     request_shutdown,
+    populate_result_from_infos,
     read_live_stamina,
     run_onetime_task,
     send_summary_email,
