@@ -17,8 +17,6 @@ if ($null -eq $rawExit) {
 $shouldShutdown = ($rawExit -band $shutdownFlag) -ne 0
 $exitCode = $rawExit -band 0x3F  # strip shutdown flag
 
-Write-Log "Stamina run finished: rawExit=$rawExit exitCode=$exitCode shutdown=$shouldShutdown"
-
 if ($exitCode -eq 0) {
     Write-Host "Process completed."
 } else {
