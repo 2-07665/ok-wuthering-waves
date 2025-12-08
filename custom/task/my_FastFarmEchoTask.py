@@ -19,7 +19,7 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
     - Echo pickup is just pressing the interact key after each kill
     - Supports multi-loop runs with per-loop reporting to Sheets
     """
-    INFO_ORDER = ('Loop', 'Loop Fights', 'Fights per Hour', 'Remaining Time', 'Combat Count', 'Merge Count', 'Total Merge Count', 'Log')
+    INFO_ORDER = ('Loop', 'Loop Fights', 'Fights per Hour', 'Remaining Time', 'Total Combat Count', 'Merge Count', 'Total Merge Count', 'Log')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -58,7 +58,7 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
 
         self.info_set("Total Merge Count", 0)
         self.info_set("Merge Count", 0)
-        self.info_set("Combat Count", 0)
+        self.info_set("Total Combat Count", 0)
         self._ensure_info_layout()
         
         success = False
@@ -81,7 +81,7 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
                         farm_start=self._loop_start_time,
                         farm_end=self._loop_end_time,
                         success=success,
-                        fight_count=int(self.info.get("Combat Count", 0) or 0),
+                        fight_count=int(self.info.get("Total Combat Count", 0) or 0),
                         fight_speed=int(self.info.get("Fights per Hour", 0) or 0),
                         report=not self._any_reports_sent,
                     )
@@ -123,7 +123,7 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
         """Reset per-loop counters and info display."""
         self._loop_start_time = time.time()
         self._last_error = ""
-        self._loop_combat_baseline = int(self.info.get('Combat Count', 0) or 0)
+        self._loop_combat_baseline = int(self.info.get('Total Combat Count', 0) or 0)
         self.info_set('Merge Count', 0)
         self._prime_loop_info(loop_number, total_loops, fights_per_loop)
 
@@ -171,7 +171,7 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
             self.send_key('f', after_sleep=0.2)
 
     def _current_loop_fights(self) -> int:
-        total = int(self.info.get('Combat Count', 0) or 0)
+        total = int(self.info.get('Total Combat Count', 0) or 0)
         return max(total - (self._loop_combat_baseline or 0), 0)
 
     def _update_fight_rate(self, total_target: int = 0) -> None:
@@ -256,7 +256,7 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
         fight_count: int | None = None,
         fight_speed: int | None = None,
     ):
-        fight_count = int(fight_count if fight_count is not None else (self.info.get("Combat Count", 0) or 0))
+        fight_count = int(fight_count if fight_count is not None else (self.info.get("Total Combat Count", 0) or 0))
         fight_speed = int(fight_speed if fight_speed is not None else (self.info.get("Fights per Hour", 0) or 0))
         result = FastFarmResult(
             started_at=datetime.fromtimestamp(farm_start),
