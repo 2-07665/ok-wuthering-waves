@@ -8,17 +8,30 @@ from typing import Any, Mapping
 
 import requests
 
+from custom.env_vars import env_var
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-MAILGUN_CONFIG = PROJECT_ROOT / "credentials" / "mailgun-api.txt"
 MAILGUN_TEMPLATE_DAILY = PROJECT_ROOT / "custom" / "email_templates" / "mailgun_daily.html"
 MAILGUN_TEMPLATE_STAMINA = PROJECT_ROOT / "custom" / "email_templates" / "mailgun_stamina.html"
+MAILGUN_API_KEY_ENV = "MAILGUN_API_KEY"
+MAILGUN_DOMAIN_ENV = "MAILGUN_DOMAIN"
+MAILGUN_RECIPIENT_ENV = "MAILGUN_RECIPIENT"
 
 
-def load_mailgun_config(path: Path = MAILGUN_CONFIG) -> tuple[str, str, str]:
-    with path.open("r", encoding="utf-8") as f:
-        lines = [line.strip() for line in f if line.strip()]
-    api_key, domain, recipient = lines[:3]
-    return api_key, domain, recipient
+def load_mailgun_config() -> tuple[str, str, str]:
+    env_config = _load_mailgun_from_env()
+    if env_config:
+        return env_config
+    raise RuntimeError("Mailgun config missing; set MAILGUN_API_KEY/MAILGUN_DOMAIN/MAILGUN_RECIPIENT in environment.")
+
+
+def _load_mailgun_from_env() -> tuple[str, str, str] | None:
+    api_key = env_var(MAILGUN_API_KEY_ENV)
+    domain = env_var(MAILGUN_DOMAIN_ENV)
+    recipient = env_var(MAILGUN_RECIPIENT_ENV)
+    if api_key and domain and recipient:
+        return api_key, domain, recipient
+    return None
 
 
 def render_local_template(variables: Mapping[str, Any], template_path: Path) -> str:
@@ -42,12 +55,11 @@ def send_email(
     *,
     variables: Mapping[str, Any] | None = None,
     template_path: Path | None = None,
-    config_path: Path = MAILGUN_CONFIG,
 ) -> requests.Response:
     """
     Send an email through Mailgun using only the local HTML template as the HTML part.
     """
-    api_key, domain, recipient = load_mailgun_config(config_path)
+    api_key, domain, recipient = load_mailgun_config()
     variables = variables or {}
     tpl = template_path or MAILGUN_TEMPLATE_DAILY
     html_body = render_local_template(variables, tpl) if variables else tpl.read_text(encoding="utf-8")

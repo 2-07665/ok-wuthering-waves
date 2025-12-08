@@ -4,6 +4,7 @@ from datetime import datetime
 from qfluentwidgets import FluentIcon
 
 from ok import Logger, TaskDisabledException
+from custom.manage_google_sheet import FastFarmResult, GoogleSheetClient
 from src.task.BaseCombatTask import BaseCombatTask
 from src.task.WWOneTimeTask import WWOneTimeTask
 from custom.task.my_FiveToOneTask import FiveToOneTask
@@ -16,48 +17,76 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
     Minimal fixed-position non-realm boss farm:
     - No character switching or post-fight movement
     - Echo pickup is just pressing the interact key after each kill
+    - Supports multi-loop runs with per-loop reporting to Sheets
     """
+    INFO_ORDER = ('Loop', 'Loop Fights', 'Fights per Hour', 'Remaining Time', 'Combat Count', 'Total Merge Count', 'Log')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.description = "单人速刷位置固定的4C Boss"
-        self.name = "固定4C速刷"
+        self.description = "不切人快速刷取大世界4C"
+        self.name = "4C速刷"
         self.group_name = "Farm"
         self.group_icon = FluentIcon.SYNC
         self.icon = FluentIcon.ALBUM
         self.default_config.update({
             'Repeat Farm Count': 2000,
+            'Number of Loops': 1,
             'Run FiveToOne After Farm': True,
             'Exit After Task': False,
         })
         # Exit combat once the boss health bar disappears.
         self.combat_end_condition = self._combat_over
         self._chars_initialized = False
-        self._farm_start_time = 0.0
-        self._farm_end_time = 0.0
+        self._loop_start_time = 0.0
+        self._loop_end_time = 0.0
+        self._run_start_time = 0.0
         self._last_error = ""
+        self._any_reports_sent = False
+        self._post_actions_executed = False
+        self._loop_combat_baseline = 0
+        self._loop_merge_baseline = 0
+        self._run_merge_baseline = 0
+        self._loop_target_fights = 0
 
     def run(self):
         WWOneTimeTask.run(self)
         self.use_liberation = False
-        self._farm_start_time = time.time()
-        self._farm_end_time = 0.0
+        self._run_start_time = time.time()
+        self._loop_start_time = self._run_start_time
+        self._loop_end_time = 0.0
         self._last_error = ""
-        self.info_set("total merge count", 0)
+        self._any_reports_sent = False
+        self._post_actions_executed = False
+
+        self.info_set("Total Merge Count", 0)
+        self.info_set("Combat Count", 0)
+        self._ensure_info_layout()
+        
         success = False
         exc_to_raise = None
         try:
             self.do_run()
             success = True
-        except TaskDisabledException as exc:
-            self._last_error = str(exc)
+        except TaskDisabledException:
+            # Do not treat TaskDisabledException as a failure.
+            success = True
+            self._last_error = ""
         except Exception as exc:  # noqa: BLE001
             self._last_error = str(exc)
             exc_to_raise = exc
         finally:
-            self._farm_end_time = time.time()
+            self._loop_end_time = time.time()
             try:
-                self._post_run_actions(success)
+                if not self._post_actions_executed:
+                    self._post_run_actions(
+                        farm_start=self._loop_start_time,
+                        farm_end=self._loop_end_time,
+                        success=success,
+                        merge_start_count=self._run_merge_baseline,
+                        fight_count=int(self.info.get("Combat Count", 0) or 0),
+                        fight_speed=int(self.info.get("Fights per Hour", 0) or 0),
+                        report=not self._any_reports_sent,
+                    )
             except Exception as exc:  # noqa: BLE001
                 self.log_error("Post-run actions failed", exc)
                 if success:
@@ -68,22 +97,203 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
             raise exc_to_raise
 
     def do_run(self):
-        total = self.config.get('Repeat Farm Count', 0)
-        for idx in range(total):
-            self.log_info(f'战斗 {idx + 1}/{total}')
+        loops = max(int(self.config.get('Number of Loops', 1) or 1), 1)
+        fights_per_loop = max(int(self.config.get('Repeat Farm Count', 1) or 1), 1)
+        stop_after_disable = False
+        self._loop_target_fights = fights_per_loop
+        for loop_idx in range(loops):
+            loop_number = loop_idx + 1
+            self._start_loop(loop_number, loops, fights_per_loop)
+            loop_success = False
+            try:
+                self._run_single_loop(loop_number, loops, fights_per_loop)
+                loop_success = True
+            except TaskDisabledException as exc:
+                self.log_info(f"Task disabled, stopping after loop {loop_number}: {exc}")
+                self._last_error = ""
+                loop_success = True
+                stop_after_disable = True
+            except Exception as exc:  # noqa: BLE001
+                self._last_error = str(exc)
+                raise
+            finally:
+                self._finish_loop(loop_success)
+            if stop_after_disable:
+                break
+
+    def _start_loop(self, loop_number: int, total_loops: int, fights_per_loop: int) -> None:
+        """Reset per-loop counters and info display."""
+        self._loop_start_time = time.time()
+        self._last_error = ""
+        self._loop_combat_baseline = int(self.info.get('Combat Count', 0) or 0)
+        self._loop_merge_baseline = int(self.info.get('Total Merge Count', 0) or 0)
+        self._prime_loop_info(loop_number, total_loops, fights_per_loop)
+
+    def _prime_loop_info(self, loop_number: int, total_loops: int, fights_per_loop: int) -> None:
+        """Seed loop-related info rows while keeping long-lived totals intact."""
+        self.info_set('Loop', f"{loop_number}/{total_loops}")
+        self.info_set('Loop Fights', f"0/{fights_per_loop}")
+        self.info_set('Fights per Hour', 0)
+        self.info_set('Remaining Time', "")
+        self._ensure_info_layout()
+        self._update_remaining_time(total_target=fights_per_loop)
+
+    def _finish_loop(self, loop_success: bool) -> None:
+        """Finalize a loop, including per-loop reporting and post-run hooks."""
+        self._loop_end_time = time.time()
+        loop_fights = self._current_loop_fights()
+        loop_speed = int(self.info.get("Fights per Hour", 0) or 0)
+        self._post_run_actions(
+            farm_start=self._loop_start_time,
+            farm_end=self._loop_end_time,
+            success=loop_success,
+            merge_start_count=self._loop_merge_baseline,
+            fight_count=loop_fights,
+            fight_speed=loop_speed,
+            report=True,
+        )
+
+    def _run_single_loop(self, loop_number: int, total_loops: int, fights_per_loop: int):
+        self.log_info(f'开始循环 {loop_number}/{total_loops}，每轮战斗 {fights_per_loop} 次')
+        self.run_until(self.in_combat, 'w', time_out=10, running=True)
+        for idx in range(fights_per_loop):
+            fight_number = idx + 1
+            self.log_info(f'循环 {loop_number}/{total_loops} 战斗 {fight_number}/{fights_per_loop}')
             if not self.wait_until(self.in_combat, time_out=30, raise_if_not_found=False):
                 self.log_info('未检测到战斗，等待boss刷新')
                 self.sleep(1)
                 continue
 
             self.combat_once(wait_combat_time=60, raise_if_not_found=False)
-            self._update_fight_rate(total)
+            self._update_fight_rate(total_target=fights_per_loop)
             self._pickup_echo()
 
     def _pickup_echo(self):
         self.wait_until(lambda: not self.in_combat(), time_out=5, raise_if_not_found=False)
         for _ in range(3):
             self.send_key('f', after_sleep=0.2)
+
+    def _current_loop_fights(self) -> int:
+        total = int(self.info.get('Combat Count', 0) or 0)
+        return max(total - (self._loop_combat_baseline or 0), 0)
+
+    def _update_fight_rate(self, total_target: int = 0) -> None:
+        """
+        Show fights/hour in the info panel using the current loop window.
+        """
+        loop_fights = self._current_loop_fights()
+        elapsed = max(time.time() - (self._loop_start_time or self.start_time or time.time()), 1)
+        self.info['Fights per Hour'] = round(loop_fights / elapsed * 3600)
+        if total_target:
+            self.info_set('Loop Fights', f"{loop_fights}/{total_target}")
+        self._update_remaining_time(total_target=total_target)
+        self._ensure_info_layout()
+
+    def _update_remaining_time(self, total_target: int | None = None) -> None:
+        total = int(total_target if total_target is not None else self._loop_target_fights)
+        fights = self._current_loop_fights()
+        if total <= 0 or fights <= 0:
+            return
+        remaining = max(total - fights, 0)
+        elapsed = max(time.time() - (self._loop_start_time or self.start_time or time.time()), 1)
+        seconds_per_fight = elapsed / fights
+        remaining_seconds = remaining * seconds_per_fight
+        hours = int(remaining_seconds // 3600)
+        minutes = int((remaining_seconds % 3600) // 60)
+        self.info['Remaining Time'] = f"{hours}h {minutes}m"
+        self._ensure_info_layout()
+
+    def _post_run_actions(
+        self,
+        *,
+        farm_start: float,
+        farm_end: float,
+        success: bool,
+        merge_start_count: int,
+        fight_count: int | None = None,
+        fight_speed: int | None = None,
+        report: bool = True,
+    ):
+        """
+        Execute end-of-loop routines: revive wait, optional merge task, and sheet reporting.
+        Intended to run after every loop; the outer run() only calls it once if a loop never started.
+        """
+        farm_start = farm_start or self._run_start_time or self.start_time or time.time()
+        farm_end = farm_end or time.time()
+        merge_start = int(merge_start_count or 0)
+        fight_count = int(fight_count if fight_count is not None else self._current_loop_fights())
+        fight_speed = int(fight_speed if fight_speed is not None else (self.info.get("Fights per Hour", 0) or 0))
+        merge_count_after = int(self.info.get("Total Merge Count", 0) or 0)
+        self._post_actions_executed = True
+        # wait to die and revive
+        self.sleep(300)
+
+        # Optionally run five-to-one task.
+        if self.config.get('Run FiveToOne After Farm', True):
+            self.ensure_main(time_out=120)
+            self.sleep(2)
+            try:
+                self.run_task_by_class(FiveToOneTask)
+                merge_count_after = int(self.info.get("Total Merge Count", merge_count_after) or merge_count_after)
+            except Exception as exc:  # noqa: BLE001
+                self.log_error("FiveToOneTask failed", exc)
+                success = False
+                self._last_error = (self._last_error + "; " if self._last_error else "") + f"FiveToOneTask: {exc}"
+        merge_delta = max(merge_count_after - merge_start, 0)
+        if report:
+            self._report_to_sheet(
+                farm_start=farm_start,
+                farm_end=farm_end,
+                success=success,
+                merge_count=merge_delta,
+                fight_count=fight_count,
+                fight_speed=fight_speed,
+            )
+            self._any_reports_sent = True
+
+    def _report_to_sheet(
+        self,
+        farm_start: float,
+        farm_end: float,
+        success: bool,
+        merge_count: int,
+        fight_count: int | None = None,
+        fight_speed: int | None = None,
+    ):
+        fight_count = int(fight_count if fight_count is not None else (self.info.get("Combat Count", 0) or 0))
+        fight_speed = int(fight_speed if fight_speed is not None else (self.info.get("Fights per Hour", 0) or 0))
+        result = FastFarmResult(
+            started_at=datetime.fromtimestamp(farm_start),
+            ended_at=datetime.fromtimestamp(farm_end),
+            status="success" if success else "fail",
+            fight_count=fight_count,
+            fight_speed=fight_speed,
+            merge_count=merge_count,
+            error=self._last_error,
+        )
+        try:
+            GoogleSheetClient().append_fast_farm_result(result)
+            self.log_info("Reported run results to Google Sheet '5to1'")
+        except Exception as exc:  # noqa: BLE001
+            self.log_error("Report to Google Sheets failed", exc)
+
+    def _ensure_info_layout(self) -> None:
+        """
+        Keep the info panel ordered and highlight loop/overall progress first.
+        Retains any extra keys by appending them after the preferred order.
+        """
+        current = dict(self.info)
+        reordered = {}
+        for key in self.INFO_ORDER:
+            if key in current:
+                reordered[key] = current[key]
+        for key, value in current.items():
+            if key not in reordered:
+                reordered[key] = value
+        self.info.clear()
+        self.info.update(reordered)
+
+    # --- Combat/task overrides for fixed-position farming ---
 
     def in_combat(self):
         """
@@ -93,8 +303,8 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
         """
         now = time.time()
 
-        if self.in_liberation or self.recent_liberation():
-            return True
+        #if self.in_liberation or self.recent_liberation():
+        #    return True
 
         if self.check_health_bar():
             self._in_combat = True
@@ -149,113 +359,3 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
 
     def _combat_over(self):
         return not self.check_health_bar()
-
-    def _update_fight_rate(self, total_target: int = 0):
-        """
-        Mirror FarmEchoTask's per-hour display: show fights/hour in the info panel.
-        """
-        fights = self.info.get('Combat Count', 0)
-        self.info['Fights per Hour'] = round(fights / max(time.time() - self.start_time, 1) * 3600)
-        self._update_remaining_time()
-
-    def _update_remaining_time(self):
-        total = int(self.config.get('Repeat Farm Count', 0) or 0)
-        fights = int(self.info.get('Combat Count', 0) or 0)
-        if total <= 0 or fights <= 0:
-            return
-        remaining = max(total - fights, 0)
-        elapsed = max(time.time() - (self._farm_start_time or self.start_time), 1)
-        seconds_per_fight = elapsed / fights
-        remaining_seconds = remaining * seconds_per_fight
-        hours = int(remaining_seconds // 3600)
-        minutes = int((remaining_seconds % 3600) // 60)
-        self.info['Remaining Time'] = f"{hours}h {minutes}m"
-
-    def _post_run_actions(self, success: bool):
-        farm_start = self._farm_start_time or self.start_time or time.time()
-        farm_end = self._farm_end_time or time.time()
-        merge_count = self.info.get("total merge count", 0)
-        # Teleport to a safe point via F2 book (single attempt).
-        try:
-            self._teleport_to_safe_point()
-        except Exception as exc:  # noqa: BLE001
-            self.log_error("Teleport to safe point failed", exc)
-            if not self._last_error:
-                self._last_error = f"Teleport failed: {exc}"
-        # Optionally run five-to-one task.
-        if self.config.get('Run FiveToOne After Farm', True):
-            self.ensure_main(time_out=120)
-            self.sleep(2)
-            try:
-                self.run_task_by_class(FiveToOneTask)
-                merge_count = self.info.get("total merge count", merge_count)
-            except Exception as exc:  # noqa: BLE001
-                self.log_error("FiveToOneTask failed", exc)
-                success = False
-                self._last_error = (self._last_error + "; " if self._last_error else "") + f"FiveToOneTask: {exc}"
-        # Report results without counting FiveToOne duration.
-        self._report_to_sheet(
-            farm_start=farm_start,
-            farm_end=farm_end,
-            success=success,
-            merge_count=merge_count,
-        )
-
-    def _report_to_sheet(self, farm_start: float, farm_end: float, success: bool, merge_count: int):
-        fight_count = int(self.info.get("Combat Count", 0) or 0)
-        fight_speed = self.info.get("Fights per Hour", 0)
-        duration_seconds = max(farm_end - farm_start, 0)
-        duration_minutes = int(duration_seconds // 60)
-        duration_hours = int(duration_minutes // 60)
-        duration_minutes = duration_minutes % 60
-        duration_str = f"{duration_hours}h {duration_minutes}m"
-        start_str = datetime.fromtimestamp(farm_start).strftime("%Y-%m-%d %H:%M:%S")
-        end_str = datetime.fromtimestamp(farm_end).strftime("%Y-%m-%d %H:%M:%S")
-        status = "success" if success else "fail"
-        error_info = self._last_error
-        try:
-            import gspread  # type: ignore
-
-            sheet_id = self._read_sheet_id()
-            if not sheet_id:
-                self.log_error("No Google Sheet ID found", None)
-                return
-            client = gspread.service_account(filename="credentials/google-api.json")
-            sh = client.open_by_key(sheet_id)
-            ws = sh.worksheet("5to1")
-            ws.append_row(
-                [
-                    start_str,
-                    end_str,
-                    duration_str,
-                    status,
-                    fight_count,
-                    fight_speed,
-                    merge_count,
-                    error_info,
-                ],
-                value_input_option="USER_ENTERED",
-            )
-            self.log_info("Reported run results to Google Sheet '5to1'")
-        except Exception as exc:  # noqa: BLE001
-            self.log_error("Report to Google Sheets failed", exc)
-
-    def _read_sheet_id(self) -> str:
-        try:
-            with open("credentials/google-sheet-id.txt", "r", encoding="utf-8") as f:
-                return f.read().strip()
-        except Exception:
-            return ""
-
-    def _teleport_to_safe_point(self):
-        """
-        Use the Tacet tab travel flow to teleport to the first Tacet as a safe point (single try).
-        """
-        self.ensure_main(time_out=60)
-        gray_book_boss = self.openF2Book("gray_book_boss")
-        self.click_box(gray_book_boss, after_sleep=1)
-        # Open Tacet tab and select the first entry.
-        self.click_relative(0.18, 0.48, after_sleep=1)
-        self.click_on_book_target(1, 12)
-        self.wait_click_travel()
-        self.wait_in_team_and_world(time_out=30, raise_if_not_found=False)

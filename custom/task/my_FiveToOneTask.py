@@ -1,8 +1,9 @@
 import re
-from ok import Logger
-from src.task.BaseCombatTask import BaseCombatTask
 
 from qfluentwidgets import FluentIcon
+
+from ok import Logger
+from src.task.BaseCombatTask import BaseCombatTask
 
 logger = Logger.get_logger(__name__)
 
@@ -11,7 +12,7 @@ class FiveToOneTask(BaseCombatTask):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.description = "自动五合一已弃置声骸"
+        self.description = "自动五合一未锁定声骸"
         self.name = "数据坞五合一"
         self.group_name = "Farm"
         self.group_icon = FluentIcon.SYNC
@@ -21,7 +22,7 @@ class FiveToOneTask(BaseCombatTask):
 
     def run(self):
         self.log_info("开始五合一任务")
-        self.info_set("total merge count", 0)
+        self.info_set("Total Merge Count", 0)
         self.ensure_main()
         self.log_info("在主页")
         self.sleep(0.1)
@@ -30,6 +31,7 @@ class FiveToOneTask(BaseCombatTask):
         self.wait_ocr(match="数据坞", box="top_left", raise_if_not_found=True, settle_time=0.2)
         self.click_relative(0.04, 0.56, after_sleep=0.5)
         self.loop_merge()
+        self.ensure_main()
         self.log_info("五合一完成!")
 
     def loop_merge(self):
@@ -37,12 +39,10 @@ class FiveToOneTask(BaseCombatTask):
         Enter batch merge, select all, consume merges until no merges remain.
         """
         while True:
-            in_merge_page = bool(self.ocr(match="全选", box="bottom_left"))
-            if not in_merge_page:
-                if not self.wait_click_ocr(match="批量融合", box="right", raise_if_not_found=False, settle_time=0.2,
+            if not self.wait_click_ocr(match="批量融合", box="right", raise_if_not_found=False, settle_time=0.2,
                                            after_sleep=0.5):
-                    self.log_info("未找到批量融合入口，结束任务")
-                    return
+                self.log_info("未找到批量融合入口，结束任务")
+                return
 
             if not self.wait_click_ocr(match="全选", box="bottom_left", raise_if_not_found=False, settle_time=0.2,
                                        after_sleep=0.3):
@@ -53,9 +53,9 @@ class FiveToOneTask(BaseCombatTask):
             if merge_count is None:
                 self.log_info("无法识别数据融合次数，结束任务")
                 return
-            self.info_set("remaining merge count", merge_count)
+            self.info_set("Remaining Merge Count", merge_count)
             if merge_count == 0:
-                self.log_info("没有可用的数据融合次数，结束任务")
+                self.log_info("未锁定声骸已耗尽，结束任务")
                 return
 
             self.wait_click_ocr(match="批量融合", box="bottom_right", raise_if_not_found=True, settle_time=0.2,
@@ -64,7 +64,7 @@ class FiveToOneTask(BaseCombatTask):
             self.wait_click_ocr(match="确认", box=confirm_box, raise_if_not_found=True, settle_time=0.1,
                                 after_sleep=0.5)
             self.wait_ocr(match="获得声骸", box="top", raise_if_not_found=False, settle_time=1)
-            self.info_incr("total merge count", merge_count)
+            self.info_incr("Total Merge Count", merge_count)
             self.click_relative(0.53, 0.05, after_sleep=0.5)
 
     def _read_merge_count(self):

@@ -71,3 +71,4 @@ repo/
 credentials/
 ok-script-master/
 ok-ww-original/
+.env

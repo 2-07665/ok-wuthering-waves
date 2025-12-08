@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import datetime as dt
 import json
 from dataclasses import dataclass
@@ -9,17 +10,44 @@ from typing import Iterable, List, Sequence
 import gspread
 from google.oauth2.service_account import Credentials
 
+from custom.env_vars import env_var
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SERVICE_ACCOUNT_FILE = PROJECT_ROOT / "credentials" / "google-api.json"
-SPREADSHEET_ID = (PROJECT_ROOT / "credentials" / "google-sheet-id.txt").read_text(encoding="utf-8").strip()
+GOOGLE_SERVICE_ACCOUNT_JSON_ENV = "GOOGLE_SERVICE_ACCOUNT_JSON"
+GOOGLE_SERVICE_ACCOUNT_JSON_B64_ENV = "GOOGLE_SERVICE_ACCOUNT_JSON_BASE64"
+GOOGLE_SHEET_ID_ENV = "GOOGLE_SHEET_ID"
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets"
 ]
 
+
+def _load_spreadsheet_id() -> str:
+    env_value = env_var(GOOGLE_SHEET_ID_ENV)
+    if env_value:
+        return env_value.strip()
+    raise RuntimeError("Google Sheet ID missing; set GOOGLE_SHEET_ID in environment.")
+
+
+def _load_service_account_info() -> dict:
+    raw_json = env_var(GOOGLE_SERVICE_ACCOUNT_JSON_ENV)
+    if raw_json:
+        return json.loads(raw_json)
+
+    raw_b64 = env_var(GOOGLE_SERVICE_ACCOUNT_JSON_B64_ENV)
+    if raw_b64:
+        decoded = base64.b64decode(raw_b64).decode("utf-8")
+        return json.loads(decoded)
+
+    raise RuntimeError("Google service account missing; set GOOGLE_SERVICE_ACCOUNT_JSON(_BASE64) in environment.")
+
+
+SPREADSHEET_ID = _load_spreadsheet_id()
+
 CONFIG_SHEET = "Config"
 DAILY_RUNS_SHEET = "DailyRuns"
 STAMINA_RUNS_SHEET = "StaminaRuns"
+FAST_FARM_SHEET = "5to1"
 
 
 @dataclass
@@ -94,24 +122,50 @@ class RunResult:
         return "; ".join(parts)
 
 
+@dataclass
+class FastFarmResult:
+    started_at: dt.datetime
+    ended_at: dt.datetime
+    status: str
+    fight_count: int
+    fight_speed: int
+    merge_count: int
+    error: str = ""
+
+    def as_row(self) -> List[str]:
+        duration_seconds = max(0, int(round((self.ended_at - self.started_at).total_seconds())))
+        return [
+            _format_timestamp(self.started_at),
+            _format_timestamp(self.ended_at),
+            _format_duration_hours_minutes(duration_seconds),
+            self.status,
+            self.fight_count,
+            self.fight_speed,
+            self.merge_count,
+            self.error,
+        ]
+
+
 class GoogleSheetClient:
     def __init__(
         self,
-        service_account_file: Path = SERVICE_ACCOUNT_FILE,
-        spreadsheet_id: str = SPREADSHEET_ID,
+        *,
+        service_account_info: dict | None = None,
+        spreadsheet_id: str | None = None,
         scopes=SCOPES,
     ):
-        self.service_account_file = Path(service_account_file)
-        self.spreadsheet_id = spreadsheet_id
+        self.service_account_info = service_account_info
+        self.spreadsheet_id = spreadsheet_id or SPREADSHEET_ID
         self.scopes = list(scopes)
         self._client: gspread.Client | None = None
         self._spreadsheet: gspread.Spreadsheet | None = None
+        self._loaded_service_account_info: dict | None = None
 
     @property
     def client(self) -> gspread.Client:
         if self._client is None:
-            creds = Credentials.from_service_account_file(
-                str(self.service_account_file),
+            creds = Credentials.from_service_account_info(
+                self._get_service_account_info(),
                 scopes=self.scopes,
             )
             self._client = gspread.authorize(creds)
@@ -161,6 +215,18 @@ class GoogleSheetClient:
         ws = self.spreadsheet.worksheet(sheet)
         ws.append_row(result.as_row(sheet), value_input_option="USER_ENTERED")
 
+    def append_fast_farm_result(self, result: FastFarmResult) -> None:
+        ws = self.spreadsheet.worksheet(FAST_FARM_SHEET)
+        ws.append_row(result.as_row(), value_input_option="USER_ENTERED")
+
+    def _get_service_account_info(self) -> dict:
+        if self._loaded_service_account_info is None:
+            if self.service_account_info is not None:
+                self._loaded_service_account_info = dict(self.service_account_info)
+            else:
+                self._loaded_service_account_info = _load_service_account_info()
+        return self._loaded_service_account_info
+
     def _sheet_name_for_result(self, task_type: str) -> str:
         if task_type.lower() == "daily":
             return DAILY_RUNS_SHEET
@@ -199,6 +265,14 @@ def _format_duration(total_seconds: int) -> str:
     if seconds or not parts:
         parts.append(f"{seconds}s")
     return " ".join(parts)
+
+
+def _format_duration_hours_minutes(total_seconds: int) -> str:
+    """Return durations like '1h 05m' for fast-farm runs."""
+    seconds = max(0, int(total_seconds))
+    hours, remainder = divmod(seconds, 3600)
+    minutes = remainder // 60
+    return f"{hours}h {minutes}m"
 
 
 def _get_bool(pairs: list[tuple[str, str]], names: set[str], default: bool = False) -> bool:
