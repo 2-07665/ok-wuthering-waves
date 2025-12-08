@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import subprocess
 import time
 from typing import Iterable, Optional
 
@@ -60,6 +61,17 @@ def ensure_game_running(ok: OK, timeout: int = 120) -> None:
             return
         time.sleep(3)
     raise RuntimeError("MY-OK-WW: Game window not ready within timeout.")
+
+
+def request_shutdown(reason: str | None = None) -> None:
+    """Attempt to power off the machine via Windows shutdown."""
+    suffix = f" ({reason})" if reason else ""
+    logger.info(f"MY-OK-WW: Shutdown requested{suffix}; powering off...")
+    try:
+        time.sleep(5)  # brief delay before issuing shutdown
+        subprocess.run(["shutdown.exe", "/s", "/t", "0"], check=True)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("MY-OK-WW: Failed to request shutdown", exc)
 
 
 def run_onetime_task(executor, task, *, timeout: int = 1800) -> None:

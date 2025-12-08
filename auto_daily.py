@@ -10,7 +10,7 @@ from custom.auto import (
     backfill_stamina_used_from_totals,
     bootstrap_ok,
     fill_stamina_from_live,
-    populate_result_from_infos,
+    request_shutdown,
     read_live_stamina,
     run_onetime_task,
     send_summary_email,
@@ -25,7 +25,6 @@ logger = Logger.get_logger(__name__)
 
 
 RUN_MODE = "daily"
-SHUTDOWN_EXIT_CODE = 64  # bit flag added to exit code when shutdown is requested
 
 
 def apply_daily_config(sheet_config: SheetRunConfig, daily_task: DailyTask) -> None:
@@ -76,7 +75,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
             executor,
             login_task,
             timeout=login_task.config.get("Login Timeout", login_task.executor.config.get("login_timeout", 600)),
-        ) #not checked yet
+        )
         daily_task = executor.get_task_by_class(DailyTask)
         apply_daily_config(sheet_config, daily_task)
         result.decision = "执行日常任务"
@@ -100,12 +99,13 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.ended_at = dt.datetime.now()
         if ok is not None:
             ok.task_executor.stop()
-            ok.device_manager.stop_hwnd()
+            if sheet_config.exit_game_after_daily or sheet_config.shutdown_after_daily:
+                ok.device_manager.stop_hwnd()
             ok.quit()
 
     sheet_client.append_run_result(result)
     update_sheet_stamina(sheet_client, result)
-    send_summary_email(result, sheet_config, RUN_MODE)
+    #send_summary_email(result, sheet_config, RUN_MODE)
     return result, sheet_config
 
 
@@ -113,5 +113,5 @@ if __name__ == "__main__":
     result, sheet_config = run()
     exit_code = 0 if result.status != "failed" else 1
     if sheet_config.shutdown_after_daily:
-        exit_code |= SHUTDOWN_EXIT_CODE
+        request_shutdown("日常任务执行完成")
     sys.exit(exit_code)

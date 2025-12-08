@@ -2,30 +2,22 @@ $root = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvoca
 Set-Location $root
 
 $python = Join-Path $root ".venv\Scripts\python.exe"
-$shutdownFlag = 64  # bit set by auto_stamina when shutdown is requested via Google Sheets
 
 $p = Start-Process -FilePath $python `
                    -ArgumentList "auto_stamina.py" `
                    -WorkingDirectory $root `
                    -PassThru -NoNewWindow -Wait
 
-$rawExit = $p.ExitCode
-if ($null -eq $rawExit) {
+$exitCode = $p.ExitCode
+if ($null -eq $exitCode) {
     Write-Host "Stamina run finished but exit code was not available (pid=$($p.Id))."
     exit 1
 }
-$shouldShutdown = ($rawExit -band $shutdownFlag) -ne 0
-$exitCode = $rawExit -band 0x3F  # strip shutdown flag
 
 if ($exitCode -eq 0) {
     Write-Host "Process completed."
 } else {
-    Write-Error "Process exited with code $exitCode (raw $rawExit)"
-}
-
-if ($shouldShutdown) {
-    Write-Host "Shutdown requested by sheet; powering off..."
-    shutdown.exe /s /t 0
+    Write-Error "Process exited with code $exitCode"
 }
 
 exit $exitCode

@@ -56,6 +56,8 @@ class SheetRunConfig:
     run_stamina: bool
     run_nightmare: bool
     tacet_serial: int
+    exit_game_after_daily: bool = False
+    exit_game_after_stamina: bool = False
     shutdown_after_daily: bool = False
     shutdown_after_stamina: bool = False
     tacet_name: str = ""
@@ -187,6 +189,8 @@ class GoogleSheetClient:
         run_stamina = _get_bool(pairs, {"体力任务"})
         tacet_serial = _get_int(pairs, {"序号"}, default=1)
         run_nightmare = _get_bool(pairs, {"梦魇巢穴"})
+        exit_game_after_daily = _get_bool(pairs, {"日常后退出"})
+        exit_game_after_stamina = _get_bool(pairs, {"体力后退出"})
         shutdown_after_daily = _get_bool(pairs, {"日常后关机"})
         shutdown_after_stamina = _get_bool(pairs, {"体力后关机"})
         tacet_name = _get_str(pairs, {"无音区选择"})
@@ -197,6 +201,8 @@ class GoogleSheetClient:
             run_stamina=run_stamina,
             run_nightmare=run_nightmare,
             tacet_serial=tacet_serial,
+            exit_game_after_daily=exit_game_after_daily,
+            exit_game_after_stamina=exit_game_after_stamina,
             shutdown_after_daily=shutdown_after_daily,
             shutdown_after_stamina=shutdown_after_stamina,
             tacet_name=tacet_name,

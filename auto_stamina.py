@@ -9,6 +9,7 @@ from ok import Logger
 from custom.auto import (
     bootstrap_ok,
     fill_stamina_from_live,
+    request_shutdown,
     read_live_stamina,
     run_onetime_task,
     send_summary_email,
@@ -23,7 +24,6 @@ logger = Logger.get_logger(__name__)
 RUN_MODE = "stamina"
 DAILY_TARGET_HOUR: int = 4
 DAILY_TARGET_MINUTE: int = 30
-SHUTDOWN_EXIT_CODE = 64  # bit flag added to exit code when shutdown is requested
 
 
 def apply_stamina_config(sheet_config: SheetRunConfig, stamina_task: TacetTask, burn: int) -> None:
@@ -155,7 +155,8 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.ended_at = dt.datetime.now()
         if ok is not None:
             ok.task_executor.stop()
-            ok.device_manager.stop_hwnd()
+            if sheet_config.exit_game_after_stamina or sheet_config.shutdown_after_stamina:
+                ok.device_manager.stop_hwnd()
             ok.quit()
 
     sheet_client.append_run_result(result)
@@ -168,5 +169,5 @@ if __name__ == "__main__":
     result, sheet_config = run()
     exit_code = 0 if result.status != "failed" else 1
     if sheet_config.shutdown_after_stamina:
-        exit_code |= SHUTDOWN_EXIT_CODE
+        request_shutdown("体力任务执行完成")
     sys.exit(exit_code)
