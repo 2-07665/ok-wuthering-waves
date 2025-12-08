@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import subprocess
 import time
-from typing import Iterable, Optional
+from typing import Mapping, Optional
 
 from ok import OK, Logger, execute
 from config import config as base_config
@@ -88,23 +88,6 @@ def run_onetime_task(executor, task, *, timeout: int = 1800) -> None:
             return
         time.sleep(1)
     raise TimeoutError(f"{task.name} did not finish within {timeout} seconds.")
-
-
-def populate_result_from_infos(result: RunResult, info_sources: Iterable[dict]) -> None:
-    result.daily_points = _first_int(info_sources, ["daily points", "total daily points"])
-    result.stamina_left = _first_int(info_sources, ["current_stamina"])
-    result.backup_stamina = _first_int(info_sources, ["back_up_stamina"])
-
-
-def _first_int(infos: Iterable[dict], keys: list[str]) -> Optional[int]:
-    for info in infos:
-        for key in keys:
-            if key in info:
-                try:
-                    return int(info[key])
-                except (TypeError, ValueError):
-                    return None
-    return None
 
 
 def backfill_stamina_used_from_totals(result: RunResult) -> None:

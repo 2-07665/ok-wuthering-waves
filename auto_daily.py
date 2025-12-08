@@ -11,7 +11,6 @@ from custom.auto import (
     bootstrap_ok,
     fill_stamina_from_live,
     request_shutdown,
-    populate_result_from_infos,
     read_live_stamina,
     run_onetime_task,
     send_summary_email,
@@ -89,7 +88,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         run_onetime_task(executor, daily_task, timeout=1200)
 
         result.status = "success"
-        populate_result_from_infos(result, (daily_task.info,))
+        result.daily_points = daily_task.info_get('total daily points')
         fill_stamina_from_live(ok, result, task=daily_task)
         backfill_stamina_used_from_totals(result)
     except Exception as exc:  # noqa: BLE001
