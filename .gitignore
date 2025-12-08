@@ -68,7 +68,6 @@ repo/
 *.pyc
 
 # my
-credentials/
 ok-script-master/
 ok-ww-original/
 .env
