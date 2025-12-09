@@ -70,7 +70,7 @@ def calculate_burn(current: int | None, backup: int | None, minutes_to_next: int
     current = max(0, current)
     backup = max(0, backup)
     future_current, future_backup = predict_future_stamina(current, backup, minutes_to_next)
-    future_total = future_current + 2 * future_backup
+    future_total = future_current + 2 * (future_backup - backup)
     if future_total <= 240:
         return False, 0, future_total, f"预计下次日常有 {future_total} 体力，不会溢出"
 
