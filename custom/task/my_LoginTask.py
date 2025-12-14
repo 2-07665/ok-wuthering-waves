@@ -90,8 +90,8 @@ class LoginTask(WWOneTimeTask, BaseWWTask):
         if not confirmed:
             self.click_relative(0.67, 0.65, after_sleep=1.5)
         self.sleep(3)
-        self._restart_wait_until = time.time() + 120  # allow the client to restart without re-launching
-        self._ensure_capture_ready(allow_launch=False)
+        self._restart_wait_until = time.time() + 90  # allow the client to restart without re-launching
+        self._ensure_capture_ready(allow_launch=False, timeout=60)
         return True
 
     def _ensure_capture_ready(self, allow_launch: bool | None = None, timeout: int = 120) -> bool:
@@ -99,24 +99,23 @@ class LoginTask(WWOneTimeTask, BaseWWTask):
             allow_launch = time.time() >= self._restart_wait_until
 
         dm = self.executor.device_manager
-        capture_ready = dm.capture_method is not None and dm.capture_method.connected()
-        interaction_ready = dm.interaction is not None
-        if capture_ready and interaction_ready:
-            return True
-        if not allow_launch:
-            end_time = time.time() + timeout
-            while time.time() < end_time:
-                dm.do_refresh(True)
-                capture_ready = dm.capture_method is not None and dm.capture_method.connected()
-                interaction_ready = dm.interaction is not None
-                if capture_ready and interaction_ready:
+        end_time = time.time() + timeout
+        while time.time() < end_time:
+            dm.do_refresh(True)
+            preferred = dm.get_preferred_device()
+            connected = bool(preferred and preferred.get("connected"))
+            capture_ready = dm.capture_method is not None and dm.capture_method.connected()
+            interaction_ready = dm.interaction is not None
+            if capture_ready and interaction_ready:
+                return True
+            if connected:
+                dm.do_start()  # ensure capture/interaction are reinitialized for the existing window
+            elif allow_launch:
+                try:
+                    ensure_game_running(og.ok, timeout=int(max(10, end_time - time.time())))
                     return True
-                self.sleep(2)
-            logger.warning("MY-OK-WW: Capture/interaction not ready after restart wait; not launching new process")
-            return False
-        try:
-            ensure_game_running(og.ok, timeout=timeout)
-            return True
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(f"MY-OK-WW: Failed to ensure game running after restart: {exc}")
-            return False
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(f"MY-OK-WW: Failed to ensure game running after restart: {exc}")
+            self.sleep(2)
+        logger.warning("MY-OK-WW: Capture/interaction not ready after restart wait")
+        return False
