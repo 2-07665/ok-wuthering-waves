@@ -413,7 +413,7 @@ class BaseWWTask(BaseTask):
             double = self.ocr(0.55, 0.56, 0.75, 0.69, match=[re.compile(str(once * 2))])
         current, back_up, total = self.get_stamina()
         y = 0.62
-        if prefer_single or (must_use and must_use <= once):
+        if prefer_single:
             used = once
             x = 0.32
             logger.info("Prefer single stamina spend")
