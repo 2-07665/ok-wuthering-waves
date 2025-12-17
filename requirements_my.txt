@@ -1,1 +1,3 @@
+dotenv
 gspread
+requests

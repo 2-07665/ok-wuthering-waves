@@ -51,7 +51,7 @@ config = {
     },
     'my_app': ['src.globals', 'Globals'],
     'start_timeout': 120,  # default 60
-    'login_timeout': 180,
+    'login_timeout': 180, # my
     'wait_until_settle_time': 0,
     # required if using feature detection
     'template_matching': {
@@ -84,7 +84,7 @@ config = {
         'resize_to': [(2560, 1440), (1920, 1080), (1600, 900), (1280, 720)],
     },
     'screenshots_folder': "screenshots",
-    'gui_title': 'OK-WW',  # Optional
+    'gui_title': 'MY-OK-WW',  # Optional
     # 'coco_feature_folder': get_path(__file__, 'assets/coco_feature'),  # required if using feature detection
     'log_file': 'logs/ok-ww.log',  # Optional, auto rotating every day
     'error_log_file': 'logs/ok-ww_error.log',
@@ -92,12 +92,9 @@ config = {
     'launcher_error_log_file': 'logs/launcher_error.log',
     'version': version,
     'onetime_tasks': [  # tasks to execute
-        ["custom.task.my_LoginTask", "LoginTask"],
         ["src.task.DailyTask", "DailyTask"],
         ["src.task.TacetTask", "TacetTask"],
         ["src.task.NightmareNestTask", "NightmareNestTask"],
-        ["custom.task.my_FastFarmEchoTask", "FastFarmEchoTask"],
-        ["custom.task.my_FiveToOneTask", "FiveToOneTask"],
     ], 'trigger_tasks': [
         ["src.task.MouseResetTask", "MouseResetTask"],
     ], 'scene': ["src.scene.WWScene", "WWScene"],

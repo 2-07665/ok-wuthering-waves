@@ -30,8 +30,8 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         self.target_enemy_time_out = 10
         self.name = "Nightmare Nest Task"
         self.description = "Auto Farm all Nightmare Nest"
-        self.group_name = "Daily"
-        self.group_icon = FluentIcon.CALENDAR
+        self.group_name = "Dungeon"
+        self.group_icon = FluentIcon.HOME
         self.icon = FluentIcon.CALORIES
         self.last_is_click = False
         self.count_re = re.compile(r"(\d{1,2})/(\d{1,2})")
