@@ -408,21 +408,19 @@ class BaseWWTask(BaseTask):
 
     def use_stamina(self, once, must_use=0, prefer_single=False):
         self.sleep(1)
-        double = None
-        if not prefer_single:
-            double = self.ocr(0.55, 0.56, 0.75, 0.69, match=[re.compile(str(once * 2))])
+        double = self.ocr(0.55, 0.56, 0.75, 0.69, match=[re.compile(str(once * 2))])
         current, back_up, total = self.get_stamina()
         y = 0.62
-        if prefer_single:
-            used = once
-            x = 0.32
-            logger.info("Prefer single stamina spend")
-        elif not double:  # 找不到双倍数字, 说明有UP, 点击右边
+        if not double:  # 找不到双倍数字, 说明有UP, 点击右边
             x = 0.67
             logger.info("找不到双倍数字, 说明有UP, 点击右边")
             used = once
         else:
-            if current >= once * 2:
+            if prefer_single:
+                x = 0.32
+                used = once
+                logger.info(f"设置使用单倍体力")
+            elif current >= once * 2:
                 used = once * 2
                 x = 0.67
                 logger.info(f"当前体力大于等于双倍, {current} >= {once * 2}")

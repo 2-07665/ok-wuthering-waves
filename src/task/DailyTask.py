@@ -37,7 +37,7 @@ class DailyTask(WWOneTimeTask, BaseCombatTask):
 
     def run(self):
         WWOneTimeTask.run(self)
-        self.ensure_main(time_out=60)
+        self.ensure_main(time_out=180)
         used_stamina, completed = self.open_daily()
         self.send_key('esc', after_sleep=1)
         if not completed:

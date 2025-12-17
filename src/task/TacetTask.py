@@ -27,7 +27,7 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
         self.config_description = {
             'Which Tacet Suppression to Farm': 'The Tacet Suppression number in the F2 list.',
             'Max Stamina to Spend': 'Stop after spending this amount; 0 = no cap.',
-            'Prefer Single Spend': 'Force single spend (60) even if double is available.',
+            'Prefer Single Spend': 'Force single spend even if double is available.',
         }
         self.default_config = default_config
         self.door_walk_method = {  # starts with 0
