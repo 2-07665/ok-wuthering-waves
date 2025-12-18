@@ -7,6 +7,12 @@
 .DS_Store
 __pycache__/
 
+configs/
+logs/
+screenshots/
+
+ok-script-master/
+ok-ww-original/
 ok-wuthering-waves-my/
 changing/
 test/
