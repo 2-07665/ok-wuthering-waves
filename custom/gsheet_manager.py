@@ -54,6 +54,10 @@ def _to_str_list(values: list) -> list[str]:
     return [_to_str(v) for v in values]
 
 
+def _bool_to_str(value: bool) -> str:
+    return "是" if value else "否"
+
+
 @dataclass
 class RunResult:
     task_type: str
@@ -69,7 +73,7 @@ class RunResult:
     stamina_left: int | None = None
     backup_stamina_left: int | None = None
 
-    projected_daily_stamina: int | None = None
+    run_nightmare: bool = False
 
     daily_points: int | None = None
 
@@ -92,7 +96,7 @@ class RunResult:
         stamina_entry = _to_str_list([self.stamina_start, self.backup_stamina_start, self.stamina_used, self.stamina_left, self.backup_stamina_left])
         info_entry = _to_str_list([self.decision, self.error])
         if sheet == SHEET_NAME["DAILY_RUNS"]:
-            return  (basic_entry + stamina_entry + [_to_str(self.daily_points)] + future_stamina + info_entry)
+            return  (basic_entry + stamina_entry + [_to_str(self.daily_points)] + future_stamina + [_bool_to_str(self.run_nightmare)]  + info_entry)
         if sheet == SHEET_NAME["STAMINA_RUNS"]:
             return (basic_entry + stamina_entry + future_stamina + info_entry)
         raise ValueError(f"Unsupported sheet '{sheet}' for result row.")
@@ -176,6 +180,17 @@ class GoogleSheetClient:
         ws = self.spreadsheet.worksheet(SHEET_NAME["CONFIG"])
         ws.update([[updated_at.strftime("%m-%d %H:%M")]], "E2", value_input_option = gspread.utils.ValueInputOption.user_entered)
         ws.update([[stamina], [backup_stamina]], "B4:B5", value_input_option = gspread.utils.ValueInputOption.user_entered)
+
+    def update_stamina_from_run(self, result: RunResult) -> None:
+        if result.stamina_left is None:
+            return
+        else:
+            ws = self.spreadsheet.worksheet(SHEET_NAME["CONFIG"])
+            updated_at = result.ended_at if result.ended_at else now()
+            backup = result.backup_stamina_left if result.backup_stamina_left else 0
+            ws.update([[updated_at.strftime("%m-%d %H:%M")]], "E2", value_input_option = gspread.utils.ValueInputOption.user_entered)
+            ws.update([[result.backup_stamina_left], [backup]], "B4:B5", value_input_option = gspread.utils.ValueInputOption.user_entered)
+        
 
     def _sheet_name_for_result(self, task_type: str) -> str:
         if task_type.lower() == "daily":
