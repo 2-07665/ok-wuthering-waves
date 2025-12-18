@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
 import datetime as dt
-from time_utils import now, format_timestamp, format_duration, predict_future_stamina, minutes_until_next_daily
+from custom.time_utils import now, format_timestamp, format_duration, predict_future_stamina, minutes_until_next_daily
 
-from env_vars import env
+from custom.env_vars import env
 import base64
 import json
 
@@ -189,7 +189,7 @@ class GoogleSheetClient:
             updated_at = result.ended_at if result.ended_at else now()
             backup = result.backup_stamina_left if result.backup_stamina_left else 0
             ws.update([[updated_at.strftime("%m-%d %H:%M")]], "E2", value_input_option = gspread.utils.ValueInputOption.user_entered)
-            ws.update([[result.backup_stamina_left], [backup]], "B4:B5", value_input_option = gspread.utils.ValueInputOption.user_entered)
+            ws.update([[result.stamina_left], [backup]], "B4:B5", value_input_option = gspread.utils.ValueInputOption.user_entered)
         
 
     def _sheet_name_for_result(self, task_type: str) -> str:

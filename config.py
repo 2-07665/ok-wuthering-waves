@@ -6,8 +6,8 @@ from src.task.process_feature import process_feature
 
 version = "my"
 
-GAME_EXE_PATH = Path(r"D:\Games\Wuthering Waves\Wuthering Waves Game\Wuthering Waves.exe")
-#GAME_EXE_PATH = Path(r"D:\Program\Wuthering Waves\Wuthering Waves Game\Wuthering Waves.exe")
+#GAME_EXE_PATH = Path(r"D:\Games\Wuthering Waves\Wuthering Waves Game\Wuthering Waves.exe")
+GAME_EXE_PATH = Path(r"D:\Program\Wuthering Waves\Wuthering Waves Game\Wuthering Waves.exe")
 
 def calculate_pc_exe_path(running_path):
     # We bypass auto-detection and return the known game executable path.
@@ -92,6 +92,7 @@ config = {
     'launcher_error_log_file': 'logs/launcher_error.log',
     'version': version,
     'onetime_tasks': [  # tasks to execute
+        ["custom.task.my_LoginTask", "LoginTask"],
         ["src.task.DailyTask", "DailyTask"],
         ["src.task.TacetTask", "TacetTask"],
         ["src.task.NightmareNestTask", "NightmareNestTask"],

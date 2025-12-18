@@ -1,5 +1,4 @@
 import datetime as dt
-from zoneinfo import ZoneInfo
 
 
 UTC = dt.timezone.utc
@@ -47,7 +46,7 @@ BACKUP_STAMINA_REGEN_MINUTE = 12
 DAILYTASK_STAMINA = 180
 TACETFARM_STAMINA_UNIT = 60
 
-BEIJING_TZ = ZoneInfo("Asia/Shanghai")
+BEIJING_TZ = dt.timezone(dt.timedelta(hours=8), name="UTC+08")
 DAILY_TARGET_HOUR: int = 4
 DAILY_TARGET_MINUTE: int = 30
 
@@ -131,7 +130,8 @@ def calculate_burn(stamina: int | None, backup_stamina: int | None) -> tuple[boo
 
 # region Test Area
 if __name__ == "__main__":
-    print(format_timestamp(dt.datetime.now()))
+    print(now())
+    print(format_timestamp(now()))
     print(format_duration(100000))
 
     print(predict_future_stamina(10, 10, 60))
