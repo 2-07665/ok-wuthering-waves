@@ -93,6 +93,8 @@ config = {
     'version': version,
     'onetime_tasks': [  # tasks to execute
         ["custom.task.my_LoginTask", "LoginTask"],
+        ["custom.task.my_FastFarmEchoTask", "FastFarmEchoTask"],
+        ["custom.task.my_FiveToOneTask", "FiveToOneTask"],
         ["src.task.DailyTask", "DailyTask"],
         ["src.task.TacetTask", "TacetTask"],
         ["src.task.NightmareNestTask", "NightmareNestTask"],

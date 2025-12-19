@@ -20,7 +20,7 @@ class LoginTask(WWOneTimeTask, BaseWWTask):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = "Login"
-        self.group_name = "MY"
+        self.group_name = "My"
         self.group_icon = FluentIcon.HOME
         self.icon = FluentIcon.HOME
         self.default_config = {
