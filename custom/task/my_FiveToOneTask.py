@@ -3,9 +3,9 @@ import re
 from qfluentwidgets import FluentIcon
 
 from ok import Logger
-from src.task.BaseCombatTask import BaseCombatTask
-
 logger = Logger.get_logger(__name__)
+
+from src.task.BaseCombatTask import BaseCombatTask
 
 
 class FiveToOneTask(BaseCombatTask):
@@ -23,9 +23,9 @@ class FiveToOneTask(BaseCombatTask):
     def run(self):
         self.log_info("开始五合一任务")
         self.info_set("Merge Count", 0)
-        self.ensure_main()
+        self.ensure_main(esc=True, time_out=30)
         self.log_info("在主页")
-        self.sleep(0.1)
+        self.sleep(0.5)
         self.open_esc_menu()
         self.wait_click_ocr(match="数据坞", box="right", raise_if_not_found=True, settle_time=0.2)
         self.wait_ocr(match="数据坞", box="top_left", raise_if_not_found=True, settle_time=0.2)

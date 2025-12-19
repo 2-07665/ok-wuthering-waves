@@ -73,7 +73,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.backup_stamina_left = backup_stamina
         result.fill_used_stamina()
     except Exception as exc:
-        result.status = "failed"
+        result.status = "failure"
         result.error = "".join(traceback.format_exception_only(type(exc), exc)).strip()
         logger.error("MY-OK-WW: Automation failed", exc)
     finally:
@@ -92,7 +92,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
 if __name__ == "__main__":
     result, sheet_config = run()
-    exit_code = 0 if result.status != "failed" else 1
+    exit_code = 0 if result.status != "failure" else 1
     if sheet_config.shutdown_after_daily:
         request_shutdown()
     sys.exit(exit_code)

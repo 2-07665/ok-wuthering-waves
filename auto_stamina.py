@@ -60,26 +60,34 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.stamina_start = stamina
         result.backup_stamina_start = backup_stamina
 
-        should_run, burn, _, _, reason = calculate_burn(stamina, backup_stamina)
+        should_run, burn, condition, reason = calculate_burn(stamina, backup_stamina)
         result.decision = reason
 
         if should_run:
             apply_stamina_config(sheet_config, stamina_task, burn)
             run_onetime_task(executor, stamina_task, timeout = 600)
 
-            result.status = "success"
+            if condition:
+                result.status = "success"
+            else:
+                result.status = "needs review"
+            
             stamina, backup_stamina = read_live_stamina(ok, stamina_task)
             result.stamina_left = stamina
             result.backup_stamina_left = backup_stamina
             result.fill_used_stamina()
         else:
-            result.status = "skipped"
+            if condition:
+                result.status = "skipped"
+            else:
+                result.status = "needs review"
+            
             result.stamina_left = result.stamina_start
             result.backup_stamina_left = result.backup_stamina_start
             result.stamina_used = 0
             logger.info(f"MY-OK-WW: Skipping run because {reason}")
     except Exception as exc:
-        result.status = "failed"
+        result.status = "failure"
         result.error = "".join(traceback.format_exception_only(type(exc), exc)).strip()
         logger.error("MY-OK-WW: Automation failed", exc)
     finally:
@@ -98,7 +106,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
 if __name__ == "__main__":
     result, sheet_config = run()
-    exit_code = 0 if result.status != "failed" else 1
+    exit_code = 0 if result.status != "failure" else 1
     if sheet_config.shutdown_after_stamina:
         request_shutdown()
     sys.exit(exit_code)

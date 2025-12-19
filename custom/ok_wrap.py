@@ -110,11 +110,11 @@ def run_onetime_task(executor, task, *, timeout: int = 1800) -> None:
 def read_live_stamina(ok: OK, task: BaseWWTask) -> tuple[int | None, int | None]:
     """Open the stamina panel and return stamina."""
     try:
-        task.ensure_main(time_out = 60, esc = True)
+        task.ensure_main(esc=True, time_out=60)
         book_box = task.openF2Book("gray_book_boss")
-        task.click_box(book_box, after_sleep = 1)
+        task.click_box(book_box, after_sleep=1)
         stamina, backup_stamina, _ = task.get_stamina()
-        task.send_key("esc", after_sleep = 1)
+        task.send_key("esc", after_sleep=1)
         if stamina < 0:
             return None, None
         return stamina, backup_stamina
