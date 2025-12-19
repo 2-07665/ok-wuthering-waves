@@ -25,7 +25,7 @@ class FastFarmEchoTask(WWOneTimeTask, BaseCombatTask):
         super().__init__(*args, **kwargs)
         self.description = "不切人快速刷取大世界4C"
         self.name = "4C速刷"
-        self.group_name = "Farm"
+        self.group_name = "My"
         self.group_icon = FluentIcon.SYNC
         self.icon = FluentIcon.ALBUM
         self.default_config.update({

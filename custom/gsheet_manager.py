@@ -11,7 +11,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-SHEET_NAME = {"CONFIG": "Test Config", "DAILY_RUNS": "Test DailyRuns", "STAMINA_RUNS": "Test StaminaRuns", "FAST_FARM_RUNS": "Test 5to1"}
+SHEET_NAME = {"CONFIG": "Config", "DAILY_RUNS": "DailyRuns", "STAMINA_RUNS": "StaminaRuns", "FAST_FARM_RUNS": "5to1"}
 
 
 def _load_service_account_info() -> dict:
