@@ -11,23 +11,22 @@ from custom.auto import (
     read_live_stamina,
     fill_used_stamina
 )
-from custom.time_utils import now
+from custom.time_utils import now, calculate_burn
 from custom.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
 from custom.task.my_LoginTask import LoginTask
-from src.task.DailyTask import DailyTask
+from src.task.TacetTask import TacetTask
+
+RUN_MODE = "stamina"
 
 
-RUN_MODE = "daily"
-
-
-def apply_daily_config(sheet_config: SheetRunConfig, daily_task: DailyTask) -> None:
-    daily_task.config["Which to Farm"] = daily_task.support_tasks[0]
-    daily_task.config["Which Tacet Suppression to Farm"] = sheet_config.tacet_serial
-    daily_task.config["Auto Farm all Nightmare Nest"] = sheet_config.run_nightmare
-    daily_task.config.save_file()
+def apply_stamina_config(sheet_config: SheetRunConfig, stamina_task: TacetTask, burn: int) -> None:
+    stamina_task.config["Which Tacet Suppression to Farm"] = sheet_config.tacet_serial
+    stamina_task.config["Max Stamina to Spend"] = burn
+    stamina_task.config["Prefer Single Spend"] = True
+    stamina_task.config.save_file()
     logger.info(
-        f"MY-OK_WW: Loaded daily config: run_daily={sheet_config.run_daily}, "
-        f"tacet #{sheet_config.tacet_serial}, nightmare={sheet_config.run_nightmare}"
+        f"MY-OK-WW: Loaded stamina config: run_stamina={sheet_config.run_stamina}, "
+        f"tacet #{sheet_config.tacet_serial}, burn={burn}"
     )
 
 
@@ -42,16 +41,13 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         started_at = now(),
         ended_at = None,
         status = "running",
-        run_nightmare = sheet_config.run_nightmare
     )
 
-    if not sheet_config.run_daily:
+    if not sheet_config.run_stamina:
         result.status = "skipped"
-        result.decision = "日常任务设置为不执行"
+        result.decision = "体力任务设置为不执行"
         result.ended_at = now()
-        result.run_nightmare = False
         logger.info(f"MY-OK_WW: Skipping run because {result.decision}")
-
         sheet_client.append_run_result(result)
         return result, sheet_config
 
@@ -65,21 +61,31 @@ def run() -> tuple[RunResult, SheetRunConfig]:
             login_task,
             timeout=login_task.config.get("Login Timeout", login_task.executor.config.get("login_timeout", 600)), ###
         )
-        daily_task = executor.get_task_by_class(DailyTask)
-        daily_task.info_clear()
-        apply_daily_config(sheet_config, daily_task)
-        stamina, backup_stamina = read_live_stamina(ok, daily_task)
+        stamina_task = executor.get_task_by_class(TacetTask)
+        stamina_task.info_clear()
+
+        stamina, backup_stamina = read_live_stamina(ok, stamina_task)
         result.stamina_start = stamina
         result.backup_stamina_start = backup_stamina
 
-        run_onetime_task(executor, daily_task, timeout = 1200)
+        should_run, burn, _, _, reason = calculate_burn(stamina, backup_stamina)
+        result.decision = reason
 
-        result.status = "success"
-        result.daily_points = daily_task.info_get('total daily points')
-        stamina, backup_stamina = read_live_stamina(ok, daily_task)
-        result.stamina_left = stamina
-        result.backup_stamina_left = backup_stamina
-        fill_used_stamina(result)
+        if should_run:
+            apply_stamina_config(sheet_config, stamina_task, burn)
+            run_onetime_task(executor, stamina_task, timeout = 600)
+
+            result.status = "success"
+            stamina, backup_stamina = read_live_stamina(ok, stamina_task)
+            result.stamina_left = stamina
+            result.backup_stamina_left = backup_stamina
+            fill_used_stamina(result)
+        else:
+            result.status = "skipped"
+            result.stamina_left = result.stamina_start
+            result.backup_stamina_left = result.backup_stamina_start
+            result.stamina_used = 0
+            logger.info(f"MY-OK-WW: Skipping run because {reason}")
     except Exception as exc:
         result.status = "failed"
         result.error = "".join(traceback.format_exception_only(type(exc), exc)).strip()
@@ -88,19 +94,19 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.ended_at = now()
         if ok is not None:
             ok.task_executor.stop()
-            if sheet_config.exit_game_after_daily or sheet_config.shutdown_after_daily:
+            if sheet_config.exit_game_after_stamina or sheet_config.shutdown_after_stamina:
                 ok.device_manager.stop_hwnd()
             ok.quit()
 
     sheet_client.update_stamina_from_run(result)
     sheet_client.append_run_result(result)
-    
+
     return result, sheet_config
 
 
 if __name__ == "__main__":
     result, sheet_config = run()
     exit_code = 0 if result.status != "failed" else 1
-    if sheet_config.shutdown_after_daily:
+    if sheet_config.shutdown_after_stamina:
         request_shutdown()
     sys.exit(exit_code)
