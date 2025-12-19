@@ -102,7 +102,7 @@ def stamina_after_consume(stamina: int | None, backup_stamina: int | None, consu
 def calculate_burn(stamina: int | None, backup_stamina: int | None) -> tuple[bool, int, int | None, int | None, str]:
     """Return (should_run, burn_amount, stamina_future, backup_stamina_future, reason)."""
     if stamina is None:
-        return True, TACETFARM_STAMINA_UNIT, None, None, "无法读取体力，按默认消耗一次"
+        return False, 0, None, None, "无法读取体力，不执行任务"
 
     stamina = max(0, min(stamina, STAMINA_CAP))
     backup_stamina = backup_stamina if backup_stamina is not None else 0
@@ -118,7 +118,7 @@ def calculate_burn(stamina: int | None, backup_stamina: int | None) -> tuple[boo
     burn_needed = (burn_needed + TACETFARM_STAMINA_UNIT - 1) // TACETFARM_STAMINA_UNIT * TACETFARM_STAMINA_UNIT
     available_stamina = (stamina + backup_stamina) // TACETFARM_STAMINA_UNIT * TACETFARM_STAMINA_UNIT
 
-    if burn_needed < available_stamina:
+    if burn_needed <= available_stamina:
         return True, burn_needed, stamina_future, backup_stamina_future, f"下次日常时会溢出 {stamina_overflow} 体力，消耗 {burn_needed}"
     else:
         if available_stamina == 0:

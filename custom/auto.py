@@ -88,6 +88,8 @@ def read_live_stamina(ok: OK, task: BaseWWTask) -> tuple[int | None, int | None]
         task.click_box(book_box, after_sleep = 1)
         stamina, backup_stamina, _ = task.get_stamina()
         task.send_key("esc", after_sleep = 1)
+        if stamina < 0:
+            return None, None
         return stamina, backup_stamina
     except Exception as exc:
         logger.error("MY-OK-WW: Failed to read live stamina", exc)
