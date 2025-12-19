@@ -123,6 +123,39 @@ def read_live_stamina(ok: OK, task: BaseWWTask) -> tuple[int | None, int | None]
         return None, None
 
 
+stamina_re = re.compile(r'^(\d+)/240$')
+backup_stamina_re = re.compile(r'^(\d+)$')
+
+def my_read_live_stamina(ok: OK, task: BaseWWTask) -> tuple[int | None, int | None]:
+    """Open the stamina panel and return stamina."""
+    try:
+        task.ensure_main(esc=True, time_out=60)
+        book_box = task.openF2Book("gray_book_boss")
+        task.click_box(book_box, after_sleep=1)
+
+        #stamina, backup_stamina, _ = task.get_stamina()
+        #if stamina < 0:
+        #    return None, None
+
+        stamina_box = task.wait_ocr(0.756, 0.035, 0.830, 0.082, raise_if_not_found=False, match=stamina_re)
+        backup_stamina_box = task.wait_ocr(0.636, 0.032, 0.711, 0.085, raise_if_not_found=False, match=backup_stamina_re)
+        if stamina_box:
+            stamina = int(stamina_box[0].name.split('/')[0])
+        else:
+            stamina = None
+        if backup_stamina_box:
+            backup_stamina = int(backup_stamina_box[0].name)
+        else:
+            backup_stamina = None
+        logger.info(f"MY-OK-WW: 当前体力 {stamina}，当前后备体力 {backup_stamina}")
+
+        task.send_key("esc", after_sleep=1)
+        return stamina, backup_stamina
+    except Exception as exc:
+        logger.error("MY-OK-WW: Failed to read live stamina", exc)
+        return None, None
+
+
 def request_shutdown():
     """power off the machine via Windows shutdown."""
     subprocess.run(["shutdown.exe", "/s", "/t", "5"])
