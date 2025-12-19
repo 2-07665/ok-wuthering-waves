@@ -1,5 +1,6 @@
 from config import config
 from ok import OK, Logger, execute
+import custom.log_filter
 logger = Logger.get_logger(__name__)
 
 from src.task.BaseWWTask import BaseWWTask
