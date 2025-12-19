@@ -61,11 +61,11 @@ def auto_login(ok: OK, total_timeout: int = 300) -> None:
         return
 
     def handle_update_restart():
-        notice = task.wait_ocr(0.15, 0.25, to_x=0.85, to_y=0.75, match=[re.compile("更新完成"), re.compile("重启")], time_out=2, raise_if_not_found=False, settle_time=0.5)
+        notice = task.wait_ocr(0.15, 0.25, to_x=0.85, to_y=0.75, match=[re.compile("更新完成"), re.compile("重启")], time_out=1, raise_if_not_found=False, settle_time=0.5)
         if notice is None:
             return
         logger.info("MY-OK-WW: Detected update completion prompt")
-        confirm = task.wait_click_ocr(0.45, 0.55, to_x=0.80, to_y=0.78, match="确认", time_out=2, raise_if_not_found=False, settle_time=0.5)
+        confirm = task.wait_click_ocr(0.45, 0.55, to_x=0.80, to_y=0.78, match="确认", time_out=3, raise_if_not_found=False, settle_time=0.5)
         if confirm is None:
             logger.info("MY-OK-WW: Couldn't find confirm button, trying to stop the game")
             ok.device_manager.stop_hwnd()
@@ -99,14 +99,12 @@ def run_onetime_task(executor, task, *, timeout: int = 1800) -> None:
     start = time.time()
     while time.time() - start < timeout:
         if executor.exit_event.is_set():
-            raise RuntimeError("Executor exit event set before task finished.")
+            raise RuntimeError("MY-OK-WW: Executor exit event set before task finished")
         if not task.enabled and executor.current_task is None:
-            if err := task.info.get("Error"):
-                raise RuntimeError(err)
             task.running = False
             return
-        time.sleep(1)
-    raise TimeoutError(f"{task.name} did not finish within {timeout} seconds.")
+        time.sleep(2)
+    raise TimeoutError(f"MY-OK-WW: {task.name} did not finish within {timeout} seconds")
 
 
 def read_live_stamina(ok: OK, task: BaseWWTask) -> tuple[int | None, int | None]:
@@ -128,10 +126,3 @@ def read_live_stamina(ok: OK, task: BaseWWTask) -> tuple[int | None, int | None]
 def request_shutdown():
     """power off the machine via Windows shutdown."""
     subprocess.run(["shutdown.exe", "/s", "/t", "5"])
-
-
-# region Test Area
-if __name__ == "__main__":
-    start_ok_and_game()
-
-# endregion

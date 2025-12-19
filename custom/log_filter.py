@@ -25,6 +25,12 @@ FILTER_RULES = [
         "level": "WARNING",
     },
     {
+        "enabled": True,
+        "name": "suppress noisy gray_book_all_monsters warnings",
+        "contains": "find_one:found gray_book_all_monsters too many",
+        "level": "WARNING",
+    },
+    {
         "enabled": False,
         "name": "suppress update_pc_device start info",
         "contains": "start update_pc_device",
@@ -35,6 +41,12 @@ FILTER_RULES = [
         "name": "suppress BaseCombatTask info",
         "startswith": "BaseCombatTask:",
         "level": "INFO",
+    },
+    {
+        "enabled": True,
+        "name": "suppress CombatCheck error",
+        "startswith": "CombatCheck:keep_boss_text_white",
+        "level": "ERROR",
     },
 ]
 

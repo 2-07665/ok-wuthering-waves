@@ -50,7 +50,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         sheet_client.append_run_result(result)
         return result, sheet_config
 
-
+    ok = None
     try:
         ok = start_ok_and_game()
         executor = ok.task_executor
