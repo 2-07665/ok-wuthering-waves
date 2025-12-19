@@ -7,8 +7,6 @@ Keep these diffs in mind when pulling upstream updates.
 
 # Codes managed by AI without human review
 
-- **Auto login**: `custom/task/my_LoginTask`
-
 - **Log filter**: `custom/log_filter`
 
 - **Fast farm 4C task**: `custom/task/my_FastFarmEchoTask`

@@ -11,7 +11,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-SHEET_NAME = {"CONFIG": "Config", "DAILY_RUNS": "DailyRuns", "STAMINA_RUNS": "StaminaRuns", "FAST_FARM_RUNS": "5to1"}
+SHEET_NAME = {"CONFIG": env("SHEET_NAME_CONFIG"), "DAILY_RUNS": env("SHEET_NAME_DAILY"), "STAMINA_RUNS": env("SHEET_NAME_STAMINA"), "FAST_FARM_RUNS": env("SHEET_NAME_FASTFARM")}
 
 
 def _load_service_account_info() -> dict:
@@ -100,6 +100,15 @@ class RunResult:
         if sheet == SHEET_NAME["STAMINA_RUNS"]:
             return (basic_entry + stamina_entry + future_stamina + info_entry)
         raise ValueError(f"Unsupported sheet '{sheet}' for result row.")
+    
+    def fill_used_stamina(self) -> None:
+        """Calculate and fill stamina_used from start/left totals."""
+        if (None in (self.stamina_start, self.backup_stamina_start, self.stamina_left, self.backup_stamina_left)):
+            return
+        start_total = (self.stamina_start or 0) + (self.backup_stamina_start or 0)
+        end_total = (self.stamina_left or 0) + (self.backup_stamina_left or 0)
+        consumed = max(0, start_total - end_total)
+        self.stamina_used = int(round(consumed / 10.0)) * 10
 
 
 @dataclass

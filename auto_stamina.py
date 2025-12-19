@@ -4,17 +4,16 @@ import traceback
 from ok import Logger
 logger = Logger.get_logger(__name__)
 
-from custom.auto import (
-    bootstrap_ok,
+from custom.ok_wrap import (
+    start_ok_and_game,
     run_onetime_task,
     request_shutdown,
-    read_live_stamina,
-    fill_used_stamina
+    read_live_stamina
 )
 from custom.time_utils import now, calculate_burn
 from custom.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
-from custom.task.my_LoginTask import LoginTask
 from src.task.TacetTask import TacetTask
+
 
 RUN_MODE = "stamina"
 
@@ -53,17 +52,10 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
 
     try:
-        ok = bootstrap_ok()
+        ok = start_ok_and_game()
         executor = ok.task_executor
-        login_task = executor.get_task_by_class(LoginTask)
-        run_onetime_task(
-            executor,
-            login_task,
-            timeout=login_task.config.get("Login Timeout", login_task.executor.config.get("login_timeout", 600)), ###
-        )
-        stamina_task = executor.get_task_by_class(TacetTask)
-        stamina_task.info_clear()
 
+        stamina_task = executor.get_task_by_class(TacetTask)
         stamina, backup_stamina = read_live_stamina(ok, stamina_task)
         result.stamina_start = stamina
         result.backup_stamina_start = backup_stamina
@@ -79,7 +71,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
             stamina, backup_stamina = read_live_stamina(ok, stamina_task)
             result.stamina_left = stamina
             result.backup_stamina_left = backup_stamina
-            fill_used_stamina(result)
+            result.fill_used_stamina()
         else:
             result.status = "skipped"
             result.stamina_left = result.stamina_start
@@ -93,7 +85,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
     finally:
         result.ended_at = now()
         if ok is not None:
-            ok.task_executor.stop()
+            executor.stop()
             if sheet_config.exit_game_after_stamina or sheet_config.shutdown_after_stamina:
                 ok.device_manager.stop_hwnd()
             ok.quit()
