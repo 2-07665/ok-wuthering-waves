@@ -136,7 +136,7 @@ class FastFarmResult:
             end = self.ended_at
         total_seconds = max(0, int(round((end - self.started_at).total_seconds())))
 
-        if self.fight_count is not None:
+        if self.fight_count is not None and total_seconds != 0:
             self.fight_speed =  max(0, round(self.fight_count * 3600 / total_seconds))
 
         self.fill_echo_number_gained()

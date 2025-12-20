@@ -81,7 +81,10 @@ def run():
             result.status = "failure"
             result.error = "".join(traceback.format_exception_only(type(exc), exc)).strip()
             logger.error("MY-OK-WW: Automation failed", exc)
-            return
+
+            sheet_client.append_fast_farm_result(result)
+            
+            break
 
     ok.task_executor.stop()
     ok.device_manager.stop_hwnd()

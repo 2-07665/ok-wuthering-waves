@@ -65,6 +65,7 @@ class FiveToOneTask(BaseWWTask):
 
             if not self.wait_click_ocr(match="批量融合", box=self.merge_button_box, time_out=5, raise_if_not_found=False, settle_time=0.2, after_sleep=1.0):
                 self.log_info("MY-OK-WW: 未找到批量融合按钮，结束任务")
+                return
 
             self.wait_click_ocr(match="确认", box=self.confirm_box, time_out=2, raise_if_not_found=False, settle_time=0.2, after_sleep=1.0)
             self.wait_ocr(match="获得声骸", box="top", time_out=5, raise_if_not_found=False, settle_time=1.0)
