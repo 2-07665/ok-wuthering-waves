@@ -66,8 +66,13 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
         run_onetime_task(executor, daily_task, timeout = 1200)
 
-        result.status = "success"
         result.daily_points = daily_task.info_get('total daily points')
+
+        if result.daily_points >= 100:
+            result.status = "success"
+        else:
+            result.status = "needs review"
+
         stamina, backup_stamina = read_live_stamina(daily_task)
         result.stamina_left = stamina
         result.backup_stamina_left = backup_stamina

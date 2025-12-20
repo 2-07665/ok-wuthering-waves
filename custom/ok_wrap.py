@@ -1,4 +1,4 @@
-from config import config, GAME_EXE_PATH
+from config import config
 from ok import OK, Logger, execute
 logger = Logger.get_logger(__name__)
 import custom.log_filter
@@ -11,6 +11,9 @@ import re
 from custom.time_utils import now, format_timestamp, minutes_until_next_daily
 
 import subprocess
+
+from custom.env_vars import env
+GAME_EXE_PATH = env("GAME_EXE_PATH")
 
 def start_ok() -> OK:
     config["use_gui"] = False

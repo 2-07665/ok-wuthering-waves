@@ -66,32 +66,34 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         if should_run:
             apply_stamina_config(sheet_config, stamina_task, burn)
             run_onetime_task(executor, stamina_task, timeout = 600)
-
-            if condition:
-                result.status = "success"
-            else:
-                result.status = "needs review"
             
             stamina, backup_stamina = read_live_stamina(stamina_task)
             result.stamina_left = stamina
             result.backup_stamina_left = backup_stamina
             result.fill_stamina_used()
-        else:
-            if condition:
-                result.status = "skipped"
+
+            if condition and result.stamina_used == burn:
+                result.status = "success"
             else:
                 result.status = "needs review"
-            
+            result.ended_at = now()
+
+        else:
             result.stamina_left = result.stamina_start
             result.backup_stamina_left = result.backup_stamina_start
             result.stamina_used = 0
             logger.info(f"MY-OK-WW: Skipping run because {reason}")
+
+            if condition:
+                result.status = "skipped"
+            else:
+                result.status = "needs review"
+            result.ended_at = result.started_at
     except Exception as exc:
         result.status = "failure"
         result.error = "".join(traceback.format_exception_only(type(exc), exc)).strip()
         logger.error("MY-OK-WW: Automation failed", exc)
     finally:
-        result.ended_at = now()
         if ok is not None:
             executor.stop()
             if sheet_config.exit_game_after_stamina or sheet_config.shutdown_after_stamina:
