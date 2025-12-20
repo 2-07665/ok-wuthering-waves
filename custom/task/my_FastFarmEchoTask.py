@@ -32,6 +32,7 @@ class FastFarmEchoTask(BaseCombatTask):
 
     def run(self):
         farm_target = self.config.get('Repeat Farm Count', 0)
+        self.info_set("Fight Count", 0)
 
         self.ensure_main(esc=True, time_out= 60)
         self.run_until(self.in_combat, 'w', time_out=10, running=True)
@@ -40,8 +41,10 @@ class FastFarmEchoTask(BaseCombatTask):
             self.log_info(f'战斗: {idx + 1}/{farm_target}')
             self.combat_once(wait_combat_time=300, raise_if_not_found=False)
             self._pickup_echo()
+            self.info_incr("Fight Count", 1)
 
         logger.info(f"MY-OK-WW: {farm_target} 次战斗已完成")
+        self.info_set("Fight Count", farm_target)
 
     def _pickup_echo(self):
         for _ in range(3):

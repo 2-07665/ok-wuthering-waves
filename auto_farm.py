@@ -19,8 +19,8 @@ from custom.task.my_FastFarmEchoTask import FastFarmEchoTask
 from custom.task.my_FiveToOneTask import FiveToOneTask
 
 
-STOP_HOUR = 13
-STOP_MINUTE = 45
+STOP_HOUR = 1
+STOP_MINUTE = 0
 
 
 def calculate_farm_count(echo_number: int | None) -> int:
@@ -65,7 +65,7 @@ def run():
             run_onetime_task_until_time(executor, farm_task, hour=STOP_HOUR, minute=STOP_MINUTE)
             
             result.ended_at = now()
-            result.fight_count = farm_target
+            result.fight_count = farm_task.info_get("Fight Count")
 
             logger.info(f"MY-OK-WW: 开始等待复活")
             time.sleep(300)

@@ -123,7 +123,7 @@ def run_onetime_task_until_time(executor, task, *, hour: int, minute: int = 0, p
         if time.time() >= deadline_ts:
             task.disable()
             task.unpause()
-            logger.info(f"MY-OK-WW: Stopped {task.name} at {format_timestamp(now())}")
+            logger.info(f"MY-OK-WW: 到达设定时间，Stopped {task.name} at {format_timestamp(now())}")
             return
         time.sleep(poll_interval)
 
