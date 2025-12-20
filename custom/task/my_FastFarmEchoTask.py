@@ -88,7 +88,7 @@ class FastFarmEchoTask(BaseCombatTask):
         """
         Never raise out of combat; keep the loop running to avoid freezes.
         """
-        return True
+        pass
 
     def sleep_check_combat(self, timeout, check_combat=True):
         """

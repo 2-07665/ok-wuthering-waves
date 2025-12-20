@@ -53,9 +53,8 @@ def run() -> tuple[RunResult, SheetRunConfig]:
     ok = None
     try:
         ok = start_ok_and_game()
-        executor = ok.task_executor
 
-        stamina_task = executor.get_task_by_class(TacetTask)
+        stamina_task = ok.task_executor.get_task_by_class(TacetTask)
         stamina, backup_stamina = read_live_stamina(stamina_task)
         result.stamina_start = stamina
         result.backup_stamina_start = backup_stamina
@@ -65,7 +64,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
         if should_run:
             apply_stamina_config(sheet_config, stamina_task, burn)
-            run_onetime_task(executor, stamina_task, timeout = 600)
+            run_onetime_task(ok.task_executor, stamina_task, timeout = 600)
             
             stamina, backup_stamina = read_live_stamina(stamina_task)
             result.stamina_left = stamina
@@ -95,7 +94,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         logger.error("MY-OK-WW: Automation failed", exc)
     finally:
         if ok is not None:
-            executor.stop()
+            ok.task_executor.stop()
             if sheet_config.exit_game_after_stamina or sheet_config.shutdown_after_stamina:
                 ok.device_manager.stop_hwnd()
             ok.quit()

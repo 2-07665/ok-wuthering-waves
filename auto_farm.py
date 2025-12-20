@@ -41,28 +41,27 @@ def run():
 
     ok = start_ok()
     refresh_ok_until_ready(ok)
-    executor = ok.task_executor
         
-    farm_task = executor.get_task_by_class(FastFarmEchoTask)
-    merge_task = executor.get_task_by_class(FiveToOneTask)
+    farm_task = ok.task_executor.get_task_by_class(FastFarmEchoTask)
+    merge_task = ok.task_executor.get_task_by_class(FiveToOneTask)
 
     seconds_to_run = minutes_until_next_daily(target_hour=STOP_HOUR, target_minute=STOP_MINUTE) * 60
     logger.info(f"MY-OK-WW: 运行时间 {format_duration(seconds_to_run)}")
     target_stop_time = time.time() + seconds_to_run
 
     while time.time() < target_stop_time:
-        try:
-            result = FastFarmResult(
+        result = FastFarmResult(
                 started_at = now(),
                 ended_at = None,
                 status = "running"
             )
-
+        
+        try:
             result.echo_number_start = read_echo_number(farm_task)
             farm_target = calculate_farm_count(result.echo_number_start)
             apply_farm_config(farm_target, farm_task)
             logger.info(f"MY-OK-WW: 已设置进行 {farm_target} 次战斗")
-            run_onetime_task_until_time(executor, farm_task, hour=STOP_HOUR, minute=STOP_MINUTE)
+            run_onetime_task_until_time(ok.task_executor, farm_task, hour=STOP_HOUR, minute=STOP_MINUTE)
             
             result.ended_at = now()
             result.fight_count = farm_task.info_get("Fight Count")
@@ -72,7 +71,7 @@ def run():
             
             result.echo_number_end = read_echo_number(farm_task)
 
-            run_onetime_task(executor, merge_task)
+            run_onetime_task(ok.task_executor, merge_task)
             result.merge_count = merge_task.info_get("Merge Count")
             result.status = "success"
 
@@ -84,7 +83,7 @@ def run():
             logger.error("MY-OK-WW: Automation failed", exc)
             return
 
-    executor.stop()
+    ok.task_executor.stop()
     ok.device_manager.stop_hwnd()
     ok.quit()
 

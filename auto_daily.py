@@ -56,17 +56,16 @@ def run() -> tuple[RunResult, SheetRunConfig]:
     ok = None
     try:
         ok = start_ok_and_game()
-        executor = ok.task_executor
         
-        daily_task = executor.get_task_by_class(DailyTask)
+        daily_task = ok.task_executor.get_task_by_class(DailyTask)
         apply_daily_config(sheet_config, daily_task)
         stamina, backup_stamina = read_live_stamina(daily_task)
         result.stamina_start = stamina
         result.backup_stamina_start = backup_stamina
 
-        run_onetime_task(executor, daily_task, timeout = 1200)
+        run_onetime_task(ok.task_executor, daily_task, timeout = 1200)
 
-        result.daily_points = daily_task.info_get('total daily points')
+        result.daily_points = daily_task.info_get('total daily points', 0)
 
         if result.daily_points >= 100:
             result.status = "success"
@@ -84,7 +83,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
     finally:
         result.ended_at = now()
         if ok is not None:
-            executor.stop()
+            ok.task_executor.stop()
             if sheet_config.exit_game_after_daily or sheet_config.shutdown_after_daily:
                 ok.device_manager.stop_hwnd()
             ok.quit()
