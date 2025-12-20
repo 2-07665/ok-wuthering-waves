@@ -13,7 +13,6 @@ from custom.time_utils import now, format_timestamp, minutes_until_next_daily
 import subprocess
 
 from custom.env_vars import env
-GAME_EXE_PATH = env("GAME_EXE_PATH")
 
 def start_ok() -> OK:
     config["use_gui"] = False
@@ -27,8 +26,9 @@ def ensure_ok_and_game_ready(ok: OK) -> None:
     preferred = dm.get_preferred_device()
 
     if not preferred.get("connected"):
-        logger.info(f"MY-OK-WW: Launching game from {GAME_EXE_PATH}")
-        execute(GAME_EXE_PATH)
+        game_exe_path = env("GAME_EXE_PATH", required=True)
+        logger.info(f"MY-OK-WW: Launching game from {game_exe_path}")
+        execute(game_exe_path)
         time.sleep(20)
 
     refresh_ok_until_ready(ok)

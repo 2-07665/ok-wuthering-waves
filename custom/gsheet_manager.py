@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import datetime as dt
+from functools import lru_cache
 from custom.time_utils import now, format_timestamp, format_duration, predict_future_stamina, minutes_until_next_daily
 
 from custom.env_vars import env
@@ -11,7 +12,22 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-SHEET_NAME = {"CONFIG": env("SHEET_NAME_CONFIG"), "DAILY_RUNS": env("SHEET_NAME_DAILY"), "STAMINA_RUNS": env("SHEET_NAME_STAMINA"), "FAST_FARM_RUNS": env("SHEET_NAME_FASTFARM")}
+
+
+def _required_env(name: str) -> str:
+    value = env(name, required=True)
+    assert value is not None
+    return value
+
+
+@lru_cache(maxsize=1)
+def sheet_names() -> dict[str, str]:
+    return {
+        "CONFIG": _required_env("SHEET_NAME_CONFIG"),
+        "DAILY_RUNS": _required_env("SHEET_NAME_DAILY"),
+        "STAMINA_RUNS": _required_env("SHEET_NAME_STAMINA"),
+        "FAST_FARM_RUNS": _required_env("SHEET_NAME_FASTFARM"),
+    }
 
 
 def _load_service_account_info() -> dict:
@@ -82,6 +98,7 @@ class RunResult:
 
     def as_row(self, sheet: str | None = None) -> list[str]:
         """Convert to a flat row for Sheets."""
+        names = sheet_names()
         if self.ended_at is None:
             end = now()
         else:
@@ -95,9 +112,9 @@ class RunResult:
         basic_entry = [format_timestamp(self.started_at), format_timestamp(end), format_duration(total_seconds), self.status]
         stamina_entry = _to_str_list([self.stamina_start, self.backup_stamina_start, self.stamina_used, self.stamina_left, self.backup_stamina_left])
         info_entry = _to_str_list([self.decision, self.error])
-        if sheet == SHEET_NAME["DAILY_RUNS"]:
+        if sheet == names["DAILY_RUNS"]:
             return  (basic_entry + stamina_entry + [_to_str(self.daily_points)] + future_stamina + [_bool_to_str(self.run_nightmare)]  + info_entry)
-        if sheet == SHEET_NAME["STAMINA_RUNS"]:
+        if sheet == names["STAMINA_RUNS"]:
             return (basic_entry + stamina_entry + future_stamina + info_entry)
         raise ValueError(f"Unsupported sheet '{sheet}' for result row.")
     
@@ -108,7 +125,7 @@ class RunResult:
         start_total = (self.stamina_start or 0) + (self.backup_stamina_start or 0)
         end_total = (self.stamina_left or 0) + (self.backup_stamina_left or 0)
         consumed = max(0, start_total - end_total)
-        self.stamina_used = int(round(consumed / 10.0)) * 10
+        self.stamina_used = (consumed // 10) * 10
 
 
 @dataclass
@@ -176,7 +193,7 @@ class GoogleSheetClient:
         return self._spreadsheet
 
     def fetch_config_rows(self) -> list[list[str]]:
-        return self.spreadsheet.worksheet(SHEET_NAME["CONFIG"]).get_all_values()
+        return self.spreadsheet.worksheet(sheet_names()["CONFIG"]).get_all_values()
 
     @staticmethod
     def _get_bool(raw: str) -> bool:
@@ -200,7 +217,7 @@ class GoogleSheetClient:
     
     def update_stamina(self, stamina: int, backup_stamina: int, updated_at: dt.datetime) -> None:
         """Update stamina cells on Config sheet (E2 for timestamp, B4/B5 for current values)."""
-        ws = self.spreadsheet.worksheet(SHEET_NAME["CONFIG"])
+        ws = self.spreadsheet.worksheet(sheet_names()["CONFIG"])
         ws.update([[updated_at.strftime("%m-%d %H:%M")]], "E2", value_input_option = gspread.utils.ValueInputOption.user_entered)
         ws.update([[stamina], [backup_stamina]], "B4:B5", value_input_option = gspread.utils.ValueInputOption.user_entered)
 
@@ -208,7 +225,7 @@ class GoogleSheetClient:
         if result.stamina_left is None:
             return
         else:
-            ws = self.spreadsheet.worksheet(SHEET_NAME["CONFIG"])
+            ws = self.spreadsheet.worksheet(sheet_names()["CONFIG"])
             updated_at = result.ended_at if result.ended_at else now()
             backup = result.backup_stamina_left if result.backup_stamina_left else 0
             ws.update([[updated_at.strftime("%m-%d %H:%M")]], "E2", value_input_option = gspread.utils.ValueInputOption.user_entered)
@@ -216,10 +233,11 @@ class GoogleSheetClient:
         
 
     def _sheet_name_for_result(self, task_type: str) -> str:
+        names = sheet_names()
         if task_type.lower() == "daily":
-            return SHEET_NAME["DAILY_RUNS"]
+            return names["DAILY_RUNS"]
         if task_type.lower() == "stamina":
-            return SHEET_NAME["STAMINA_RUNS"]
+            return names["STAMINA_RUNS"]
         raise ValueError(f"Unsupported task type: {task_type}")
 
     def append_run_result(self, result: RunResult) -> None:
@@ -228,7 +246,7 @@ class GoogleSheetClient:
         ws.append_row(result.as_row(sheet), value_input_option = gspread.utils.ValueInputOption.user_entered)
 
     def append_fast_farm_result(self, result: FastFarmResult) -> None:
-        ws = self.spreadsheet.worksheet(SHEET_NAME["FAST_FARM_RUNS"])
+        ws = self.spreadsheet.worksheet(sheet_names()["FAST_FARM_RUNS"])
         ws.append_row(result.as_row(), value_input_option = gspread.utils.ValueInputOption.user_entered)
 
 
@@ -247,7 +265,7 @@ if __name__ == "__main__":
 
     if run_update_stamina_example:
         sheet.update_stamina(30, 20, some_time)
-        print(f"Updated stamina values on {SHEET_NAME['CONFIG']}.")
+        print(f"Updated stamina values on {sheet_names()['CONFIG']}.")
 
     if run_append_daily_task_row:
         fake_result = RunResult(
@@ -268,7 +286,7 @@ if __name__ == "__main__":
             decision = "测试写入日常任务结果",
         )
         sheet.append_run_result(fake_result)
-        print(f"Appended a test row to {SHEET_NAME['DAILY_RUNS']}.")
+        print(f"Appended a test row to {sheet_names()['DAILY_RUNS']}.")
 
     if run_append_stamina_task_row:
         fake_result = RunResult(
@@ -287,7 +305,7 @@ if __name__ == "__main__":
             decision = "测试写入体力任务结果",
         )
         sheet.append_run_result(fake_result)
-        print(f"Appended a test row to {SHEET_NAME['STAMINA_RUNS']}.")
+        print(f"Appended a test row to {sheet_names()['STAMINA_RUNS']}.")
 
     if run_append_fast_farm_task_row:
         fake_result = FastFarmResult(
@@ -304,6 +322,6 @@ if __name__ == "__main__":
         )
         fake_result.fill_echo_number_gained()
         sheet.append_fast_farm_result(fake_result)
-        print(f"Appended a test row to {SHEET_NAME['FAST_FARM_RUNS']}.")
+        print(f"Appended a test row to {sheet_names()['FAST_FARM_RUNS']}.")
 
 #endregion

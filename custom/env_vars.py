@@ -8,9 +8,15 @@ from dotenv import load_dotenv
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ENV_PATH = PROJECT_ROOT / ".env"
 
+_DOTENV_LOADED = False
 
-# Load .env once at import time
-load_dotenv(dotenv_path=ENV_PATH)
+
+def _ensure_dotenv_loaded() -> None:
+    global _DOTENV_LOADED
+    if _DOTENV_LOADED:
+        return
+    load_dotenv(dotenv_path=ENV_PATH)
+    _DOTENV_LOADED = True
 
 
 def env(name: str, default: str | None = None, *, required: bool = False) -> str | None:
@@ -19,6 +25,7 @@ def env(name: str, default: str | None = None, *, required: bool = False) -> str
     - If `required=True` and the variable is missing (and no default is given), raises RuntimeError.
     - Otherwise returns the value or `default` (which is None by default).
     """
+    _ensure_dotenv_loaded()
     value = os.getenv(name, default)
     if required and value is None:
         raise RuntimeError(f"Environment variable '{name}' is required but missing.")
