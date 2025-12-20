@@ -48,6 +48,12 @@ FILTER_RULES = [
         "startswith": "CombatCheck:keep_boss_text_white",
         "level": "ERROR",
     },
+    {
+        "enabled": True,
+        "name": "suppress Cartethyia combat info",
+        "contains": "Cartethyia",
+        "level": "INFO",
+    },
 ]
 
 

@@ -11,9 +11,6 @@ Keep these diffs in mind when pulling upstream updates.
 
 - **Fast farm 4C task**: `custom/task/my_FastFarmEchoTask`
 
-- **Auto 5 to 1 task**: `custom/task/my_FiveToOneTask`
-
-
 # To-do list
 
 - Rebuild email sender.

@@ -8,6 +8,7 @@ from src.task.DailyTask import DailyTask
 
 import time
 import re
+from custom.time_utils import now, format_timestamp, minutes_until_next_daily
 
 import subprocess
 
@@ -107,7 +108,33 @@ def run_onetime_task(executor, task, *, timeout: int = 1800) -> None:
     raise TimeoutError(f"MY-OK-WW: {task.name} did not finish within {timeout} seconds")
 
 
-def read_live_stamina(ok: OK, task: BaseWWTask) -> tuple[int | None, int | None]:
+def run_onetime_task_until_time(executor, task, *, hour: int, minute: int = 0, poll_interval: int = 10) -> None:
+    task.enable()
+    task.unpause()
+
+    deadline_ts = time.time() + minutes_until_next_daily(target_hour=hour, target_minute=minute) * 60
+
+    while True:
+        if executor.exit_event.is_set():
+            raise RuntimeError("MY-OK-WW: Executor exit event set before task finished")
+        if not task.enabled and executor.current_task is None:
+            task.running = False
+            return
+        if time.time() >= deadline_ts:
+            task.disable()
+            task.unpause()
+            logger.info(f"MY-OK-WW: Stopped {task.name} at {format_timestamp(now())}")
+            return
+        time.sleep(poll_interval)
+
+
+def request_shutdown():
+    """power off the machine via Windows shutdown."""
+    subprocess.run(["shutdown.exe", "/s", "/t", "5"])
+
+
+# region Read Data
+def read_live_stamina(task: BaseWWTask) -> tuple[int | None, int | None]:
     """Open the stamina panel and return stamina."""
     try:
         task.ensure_main(esc=True, time_out=60)
@@ -126,7 +153,7 @@ def read_live_stamina(ok: OK, task: BaseWWTask) -> tuple[int | None, int | None]
 stamina_re = re.compile(r'^(\d+)/240$')
 backup_stamina_re = re.compile(r'^(\d+)$')
 
-def my_read_live_stamina(ok: OK, task: BaseWWTask) -> tuple[int | None, int | None]:
+def my_read_live_stamina(task: BaseWWTask) -> tuple[int | None, int | None]:
     """Open the stamina panel and return stamina."""
     try:
         task.ensure_main(esc=True, time_out=60)
@@ -156,6 +183,29 @@ def my_read_live_stamina(ok: OK, task: BaseWWTask) -> tuple[int | None, int | No
         return None, None
 
 
-def request_shutdown():
-    """power off the machine via Windows shutdown."""
-    subprocess.run(["shutdown.exe", "/s", "/t", "5"])
+def read_echo_number(task: BaseWWTask) -> int | None:
+    try:
+        task.ensure_main(esc=True, time_out=60)
+        logger.info("MY-OK-WW: 打开背包")
+        task.send_key_down("alt")
+        task.sleep(0.05)
+        task.click_relative(0.17, 0.045)
+        task.send_key_up("alt")
+        task.sleep(2)
+        task.click_relative(0.04, 0.3)
+
+        echo_number_box = task.wait_ocr(0.087, 0.035, 0.183, 0.091, match=re.compile(r'^(\d+)/3000$'), raise_if_not_found=False, time_out=5)
+
+        if echo_number_box:
+            echo_number = int(echo_number_box[0].name.split('/')[0])
+            logger.info(f"MY-OK-WW: 当前拥有 {echo_number} 声骸")
+        else:
+            echo_number = None
+            logger.error(f"MY-OK-WW: 读取声骸数量识别失败")
+        return echo_number
+    
+    except Exception as exc:
+        logger.error(f"MY-OK-WW: 读取声骸数量失败", exc)
+        return None
+
+# endregion

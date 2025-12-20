@@ -56,7 +56,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         executor = ok.task_executor
 
         stamina_task = executor.get_task_by_class(TacetTask)
-        stamina, backup_stamina = read_live_stamina(ok, stamina_task)
+        stamina, backup_stamina = read_live_stamina(stamina_task)
         result.stamina_start = stamina
         result.backup_stamina_start = backup_stamina
 
@@ -72,10 +72,10 @@ def run() -> tuple[RunResult, SheetRunConfig]:
             else:
                 result.status = "needs review"
             
-            stamina, backup_stamina = read_live_stamina(ok, stamina_task)
+            stamina, backup_stamina = read_live_stamina(stamina_task)
             result.stamina_left = stamina
             result.backup_stamina_left = backup_stamina
-            result.fill_used_stamina()
+            result.fill_stamina_used()
         else:
             if condition:
                 result.status = "skipped"

@@ -136,6 +136,6 @@ if __name__ == "__main__":
 
     print(predict_future_stamina(10, 10, 60))
     print(minutes_until_stamina_full(238))
-    print(minutes_until_next_daily())
+    print(minutes_until_next_daily(now(), 1, 0))
     print(calculate_burn(90, 21))
 # endregion

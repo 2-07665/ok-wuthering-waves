@@ -60,7 +60,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         
         daily_task = executor.get_task_by_class(DailyTask)
         apply_daily_config(sheet_config, daily_task)
-        stamina, backup_stamina = read_live_stamina(ok, daily_task)
+        stamina, backup_stamina = read_live_stamina(daily_task)
         result.stamina_start = stamina
         result.backup_stamina_start = backup_stamina
 
@@ -68,10 +68,10 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
         result.status = "success"
         result.daily_points = daily_task.info_get('total daily points')
-        stamina, backup_stamina = read_live_stamina(ok, daily_task)
+        stamina, backup_stamina = read_live_stamina(daily_task)
         result.stamina_left = stamina
         result.backup_stamina_left = backup_stamina
-        result.fill_used_stamina()
+        result.fill_stamina_used()
     except Exception as exc:
         result.status = "failure"
         result.error = "".join(traceback.format_exception_only(type(exc), exc)).strip()

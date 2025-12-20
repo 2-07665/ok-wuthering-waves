@@ -101,7 +101,7 @@ class RunResult:
             return (basic_entry + stamina_entry + future_stamina + info_entry)
         raise ValueError(f"Unsupported sheet '{sheet}' for result row.")
     
-    def fill_used_stamina(self) -> None:
+    def fill_stamina_used(self) -> None:
         """Calculate and fill stamina_used from start/left totals."""
         if (None in (self.stamina_start, self.backup_stamina_start, self.stamina_left, self.backup_stamina_left)):
             return
@@ -118,10 +118,13 @@ class FastFarmResult:
 
     status: str
 
-    fight_count: int | None
-    fight_speed: int | None
+    fight_count: int | None = None
+    fight_speed: int | None = None
 
-    merge_count: int | None = 0
+    echo_number_start: int | None = None
+    echo_number_end: int | None = None
+    echo_number_gained: int | None = None
+    merge_count: int | None = None
 
     error: str | None = ""
 
@@ -133,11 +136,22 @@ class FastFarmResult:
             end = self.ended_at
         total_seconds = max(0, int(round((end - self.started_at).total_seconds())))
 
+        if self.fight_count is not None:
+            self.fight_speed =  max(0, round(self.fight_count * 3600 / total_seconds))
+
+        self.fill_echo_number_gained()
+
         basic_entry = [format_timestamp(self.started_at), format_timestamp(end), format_duration(total_seconds), self.status]
-        fight_entry = _to_str_list([self.fight_count,self.fight_speed,self.merge_count])
+        fight_entry = _to_str_list([self.fight_count, self.fight_speed])
+        echo_entry = _to_str_list([self.echo_number_start, self.echo_number_end, self.echo_number_gained, self.merge_count])
         info_entry = [_to_str(self.error)]
 
-        return (basic_entry + fight_entry + info_entry)
+        return (basic_entry + fight_entry + echo_entry + info_entry)
+    
+    def fill_echo_number_gained(self) -> None:
+        if (None in (self.echo_number_start, self.echo_number_end)):
+            return
+        self.echo_number_gained = max(0, self.echo_number_end - self.echo_number_start)
 
 
 class GoogleSheetClient:
@@ -220,9 +234,9 @@ class GoogleSheetClient:
 
 # region Test Area
 if __name__ == "__main__":
-    run_update_stamina_example = True
-    run_append_daily_task_row = True
-    run_append_stamina_task_row = True
+    run_update_stamina_example = False
+    run_append_daily_task_row = False
+    run_append_stamina_task_row = False
     run_append_fast_farm_task_row = True
 
     some_time = now()
@@ -283,8 +297,12 @@ if __name__ == "__main__":
 
             fight_count = 360,
             fight_speed = 360,
+
+            echo_number_start=1000,
+            echo_number_end=1800,
             merge_count = 0
         )
+        fake_result.fill_echo_number_gained()
         sheet.append_fast_farm_result(fake_result)
         print(f"Appended a test row to {SHEET_NAME['FAST_FARM_RUNS']}.")
 

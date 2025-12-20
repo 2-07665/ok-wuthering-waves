@@ -5,10 +5,10 @@ from qfluentwidgets import FluentIcon
 from ok import Logger
 logger = Logger.get_logger(__name__)
 
-from src.task.BaseCombatTask import BaseCombatTask
+from src.task.BaseWWTask import BaseWWTask
 
 
-class FiveToOneTask(BaseCombatTask):
+class FiveToOneTask(BaseWWTask):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
