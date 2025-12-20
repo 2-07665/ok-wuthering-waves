@@ -29,7 +29,7 @@ def ensure_ok_and_game_ready(ok: OK) -> None:
         game_exe_path = env("GAME_EXE_PATH", required=True)
         logger.info(f"MY-OK-WW: Launching game from {game_exe_path}")
         execute(game_exe_path)
-        time.sleep(20)
+        time.sleep(30)
 
     refresh_ok_until_ready(ok)
 
