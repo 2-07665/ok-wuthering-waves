@@ -25,7 +25,7 @@ STOP_MINUTE = 0
 
 def calculate_farm_count(echo_number: int | None) -> int:
     if echo_number is None:
-        return 1000
+        return 100
     else:
         return round((3000 - echo_number) / 0.6)
 

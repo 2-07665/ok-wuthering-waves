@@ -9,6 +9,7 @@ from src.task.DailyTask import DailyTask
 import time
 import re
 from custom.time_utils import now, format_timestamp, minutes_until_next_daily
+from custom.ui_boxes import get_ui_box
 
 import subprocess
 
@@ -65,11 +66,23 @@ def auto_login(ok: OK, total_timeout: int = 300) -> None:
         return
 
     def handle_update_restart():
-        notice = task.wait_ocr(0.15, 0.25, to_x=0.85, to_y=0.75, match=[re.compile("更新完成"), re.compile("重启")], time_out=1, raise_if_not_found=False, settle_time=0.5)
+        notice = task.wait_ocr(
+            box=task.box_of_screen(*get_ui_box("登录界面更新提醒")),
+            match=[re.compile("更新完成"), re.compile("重启")],
+            time_out=1,
+            raise_if_not_found=False,
+            settle_time=0.5,
+        )
         if notice is None:
             return
         logger.info("MY-OK-WW: Detected update completion prompt")
-        confirm = task.wait_click_ocr(0.45, 0.55, to_x=0.80, to_y=0.78, match="确认", time_out=3, raise_if_not_found=False, settle_time=0.5)
+        confirm = task.wait_click_ocr(
+            box=task.box_of_screen(*get_ui_box("登录界面更新提醒确认按钮")),
+            match="确认",
+            time_out=3,
+            raise_if_not_found=False,
+            settle_time=0.5,
+        )
         if confirm is None:
             logger.info("MY-OK-WW: Couldn't find confirm button, trying to stop the game")
             ok.device_manager.stop_hwnd()
@@ -168,8 +181,16 @@ def my_read_live_stamina(task: BaseWWTask) -> tuple[int | None, int | None]:
         #if stamina < 0:
         #    return None, None
 
-        stamina_box = task.wait_ocr(0.756, 0.035, 0.830, 0.082, raise_if_not_found=False, match=stamina_re)
-        backup_stamina_box = task.wait_ocr(0.636, 0.032, 0.711, 0.085, raise_if_not_found=False, match=backup_stamina_re)
+        stamina_box = task.wait_ocr(
+            box=task.box_of_screen(*get_ui_box("F2书体力")),
+            raise_if_not_found=False,
+            match=stamina_re,
+        )
+        backup_stamina_box = task.wait_ocr(
+            box=task.box_of_screen(*get_ui_box("F2书后备体力")),
+            raise_if_not_found=False,
+            match=backup_stamina_re,
+        )
         if stamina_box:
             stamina = int(stamina_box[0].name.split('/')[0])
         else:
@@ -194,17 +215,13 @@ def read_echo_number(task: BaseWWTask, *, retries: int = 3, retry_sleep: float =
             if attempt > 1:
                 logger.info(f"MY-OK-WW: 重新尝试读取声骸数量 ({attempt}/{retries})")
             task.ensure_main(esc=True, time_out=60)
-            logger.info("MY-OK-WW: 打开背包")
-            task.send_key_down("alt")
-            try:
-                task.sleep(0.05)
-                task.click_relative(0.17, 0.045)
-            finally:
-                task.send_key_up("alt")
+            logger.info("MY-OK-WW: 按B打开背包")
+            task.send_key('b')
             task.sleep(2)
             task.click_relative(0.04, 0.3)
 
-            echo_number_box = task.wait_ocr(0.087, 0.035, 0.183, 0.091,
+            echo_number_box = task.wait_ocr(
+                box=task.box_of_screen(*get_ui_box("背包声骸数量")),
                 match=echo_number_re,
                 raise_if_not_found=False,
                 time_out=ocr_timeout,
