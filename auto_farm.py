@@ -57,7 +57,7 @@ def run():
             )
         
         try:
-            result.echo_number_start = read_echo_number(farm_task)
+            result.echo_number_start = read_echo_number(farm_task, retries=3)
             farm_target = calculate_farm_count(result.echo_number_start)
             apply_farm_config(farm_target, farm_task)
             logger.info(f"MY-OK-WW: 已设置进行 {farm_target} 次战斗")
@@ -69,7 +69,7 @@ def run():
             logger.info(f"MY-OK-WW: 开始等待复活")
             time.sleep(300)
             
-            result.echo_number_end = read_echo_number(farm_task)
+            result.echo_number_end = read_echo_number(farm_task, retries=3)
 
             run_onetime_task(ok.task_executor, merge_task)
             result.merge_count = merge_task.info_get("Merge Count")

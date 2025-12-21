@@ -155,6 +155,7 @@ def read_live_stamina(task: BaseWWTask) -> tuple[int | None, int | None]:
 
 stamina_re = re.compile(r'^(\d+)/240$')
 backup_stamina_re = re.compile(r'^(\d+)$')
+echo_number_re = re.compile(r'^(\d+)/3000$')
 
 def my_read_live_stamina(task: BaseWWTask) -> tuple[int | None, int | None]:
     """Open the stamina panel and return stamina."""
@@ -186,29 +187,48 @@ def my_read_live_stamina(task: BaseWWTask) -> tuple[int | None, int | None]:
         return None, None
 
 
-def read_echo_number(task: BaseWWTask) -> int | None:
-    try:
-        task.ensure_main(esc=True, time_out=60)
-        logger.info("MY-OK-WW: 打开背包")
-        task.send_key_down("alt")
-        task.sleep(0.05)
-        task.click_relative(0.17, 0.045)
-        task.send_key_up("alt")
-        task.sleep(2)
-        task.click_relative(0.04, 0.3)
+def read_echo_number(task: BaseWWTask, *, retries: int = 3, retry_sleep: float = 10.0, ocr_timeout: int = 5) -> int | None:
+    last_exc: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            if attempt > 1:
+                logger.info(f"MY-OK-WW: 重新尝试读取声骸数量 ({attempt}/{retries})")
+            task.ensure_main(esc=True, time_out=60)
+            logger.info("MY-OK-WW: 打开背包")
+            task.send_key_down("alt")
+            try:
+                task.sleep(0.05)
+                task.click_relative(0.17, 0.045)
+            finally:
+                task.send_key_up("alt")
+            task.sleep(2)
+            task.click_relative(0.04, 0.3)
 
-        echo_number_box = task.wait_ocr(0.087, 0.035, 0.183, 0.091, match=re.compile(r'^(\d+)/3000$'), raise_if_not_found=False, time_out=5)
+            echo_number_box = task.wait_ocr(0.087, 0.035, 0.183, 0.091,
+                match=echo_number_re,
+                raise_if_not_found=False,
+                time_out=ocr_timeout,
+                settle_time=0.5,
+            )
 
-        if echo_number_box:
-            echo_number = int(echo_number_box[0].name.split('/')[0])
-            logger.info(f"MY-OK-WW: 当前拥有 {echo_number} 声骸")
-        else:
-            echo_number = None
-            logger.error(f"MY-OK-WW: 读取声骸数量识别失败")
-        return echo_number
-    
-    except Exception as exc:
-        logger.error(f"MY-OK-WW: 读取声骸数量失败", exc)
-        return None
+            if echo_number_box:
+                echo_number = int(echo_number_box[0].name.split('/')[0])
+                logger.info(f"MY-OK-WW: 当前拥有 {echo_number} 声骸")
+                return echo_number
+            logger.warning("MY-OK-WW: 读取声骸数量识别失败")
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("MY-OK-WW: 读取声骸数量失败", exc)
+        finally:
+            task.ensure_main(esc=True, time_out=10)
+
+        if attempt < retries:
+            time.sleep(retry_sleep)
+
+    if last_exc is not None:
+        logger.error("MY-OK-WW: 读取声骸数量失败，已超过最大重试次数", last_exc)
+    else:
+        logger.error("MY-OK-WW: 读取声骸数量失败，已超过最大重试次数")
+    return None
 
 # endregion
