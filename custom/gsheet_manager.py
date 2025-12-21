@@ -125,7 +125,7 @@ class RunResult:
         start_total = (self.stamina_start or 0) + (self.backup_stamina_start or 0)
         end_total = (self.stamina_left or 0) + (self.backup_stamina_left or 0)
         consumed = max(0, start_total - end_total)
-        self.stamina_used = (consumed // 10) * 10
+        self.stamina_used = int(round(consumed / 20.0)) * 20
 
 
 @dataclass
