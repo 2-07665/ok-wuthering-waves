@@ -20,14 +20,8 @@ LOGGER_NAMES = ["ok"]
 FILTER_RULES = [
     {
         "enabled": True,
-        "name": "suppress noisy gray_book_boss warnings",
-        "contains": "find_one:found gray_book_boss too many",
-        "level": "WARNING",
-    },
-    {
-        "enabled": True,
-        "name": "suppress noisy gray_book_all_monsters warnings",
-        "contains": "find_one:found gray_book_all_monsters too many",
+        "name": "suppress noisy gray_book warnings",
+        "contains": "find_one:found gray_book",
         "level": "WARNING",
     },
     {
