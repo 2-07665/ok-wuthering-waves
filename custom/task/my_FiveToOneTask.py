@@ -25,7 +25,7 @@ class FiveToOneTask(BaseWWTask):
         self.info_set("Merge Count", 0)
         self.ensure_main(esc=True, time_out=30)
         self.log_info("在主页")
-        self.send_key("esc")
+        self.open_esc_menu()
         self.sleep(1.0)
         ocr_result = self.wait_click_ocr(*get_ui_box("ESC菜单数据坞"), match="数据坞", time_out=20, raise_if_not_found=True, settle_time=0.2, after_sleep=1.0)
         if ocr_result is None:
