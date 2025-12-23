@@ -90,7 +90,7 @@ def auto_login(ok: OK, total_timeout: int = 300) -> None:
             ensure_ok_and_game_ready(ok)
         else:
             logger.info("MY-OK-WW: Clicked restart button")
-            time.sleep(20)
+            time.sleep(60)
             refresh_ok_until_ready(ok)
 
     start = time.time()
