@@ -22,6 +22,8 @@ from custom.task.my_FiveToOneTask import FiveToOneTask
 STOP_HOUR = 1
 STOP_MINUTE = 0
 
+MERGE_MAX_RETRIES = 3
+
 
 def calculate_farm_count(echo_number: int | None) -> int:
     if echo_number is None:
@@ -71,8 +73,18 @@ def run():
             
             result.echo_number_end = read_echo_number(farm_task, retries=3)
 
-            run_onetime_task(ok.task_executor, merge_task)
-            result.merge_count = merge_task.info_get("Merge Count")
+            total_merge_count = 0
+            remaining_merge_count = None
+            for attempt in range(1, MERGE_MAX_RETRIES + 1):
+                run_onetime_task(ok.task_executor, merge_task)
+                total_merge_count += merge_task.info_get("Merge Count") or 0
+                remaining_merge_count = merge_task.info_get("Remaining Merge Count")
+                if remaining_merge_count == 0:
+                    break
+                if attempt < MERGE_MAX_RETRIES:
+                    logger.info(f"MY-OK-WW: Merge task exited early. Retrying {attempt + 1}/{MERGE_MAX_RETRIES}")
+                    time.sleep(10)
+            result.merge_count = total_merge_count
             result.status = "success"
 
             sheet_client.append_fast_farm_result(result)
