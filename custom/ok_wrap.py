@@ -150,20 +150,41 @@ def request_shutdown():
 
 
 # region Read Data
-def read_live_stamina(task: BaseWWTask) -> tuple[int | None, int | None]:
+def read_live_stamina(
+    task: BaseWWTask,
+    *,
+    retries: int = 3,
+    retry_sleep: float = 10.0,
+) -> tuple[int | None, int | None]:
     """Open the stamina panel and return stamina."""
-    try:
-        task.ensure_main(esc=True, time_out=60)
-        book_box = task.openF2Book("gray_book_boss")
-        task.click_box(book_box, after_sleep=1)
-        stamina, backup_stamina, _ = task.get_stamina()
-        task.send_key("esc", after_sleep=1)
-        if stamina < 0:
-            return None, None
-        return stamina, backup_stamina
-    except Exception as exc:
-        logger.error("MY-OK-WW: Failed to read live stamina", exc)
-        return None, None
+    last_exc: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            if attempt > 1:
+                logger.info(f"MY-OK-WW: 重新尝试读取体力 ({attempt}/{retries})")
+            task.ensure_main(esc=True, time_out=60)
+            book_box = task.openF2Book("gray_book_boss")
+            task.click_box(book_box, after_sleep=1)
+            stamina, backup_stamina, _ = task.get_stamina()
+            task.send_key("esc", after_sleep=1)
+            if stamina < 0:
+                logger.warning("MY-OK-WW: 读取体力失败")
+            else:
+                return stamina, backup_stamina
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("MY-OK-WW: 读取体力失败", exc)
+        finally:
+            task.ensure_main(esc=True, time_out=10)
+
+        if attempt < retries:
+            time.sleep(retry_sleep)
+
+    if last_exc is not None:
+        logger.error("MY-OK-WW: 读取体力失败，已超过最大重试次数", last_exc)
+    else:
+        logger.error("MY-OK-WW: 读取体力失败，已超过最大重试次数")
+    return None, None
 
 
 stamina_re = re.compile(r'^(\d+)/240$')
