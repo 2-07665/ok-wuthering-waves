@@ -51,6 +51,7 @@ class SheetRunConfig:
     exit_game_after_daily: bool = False
     shutdown_after_daily: bool = False
     run_nightmare: bool = False
+    run_tacet_discord_nest: bool = False
     
     run_stamina: bool = True
     exit_game_after_stamina: bool = False
@@ -90,6 +91,7 @@ class RunResult:
     backup_stamina_left: int | None = None
 
     run_nightmare: bool = False
+    run_tacet_discord_nest: bool = False
 
     daily_points: int | None = None
 
@@ -111,9 +113,10 @@ class RunResult:
 
         basic_entry = [format_timestamp(self.started_at), format_timestamp(end), format_duration(total_seconds), self.status]
         stamina_entry = _to_str_list([self.stamina_start, self.backup_stamina_start, self.stamina_used, self.stamina_left, self.backup_stamina_left])
+        nest_entry = [_bool_to_str(self.run_nightmare), _bool_to_str(self.run_tacet_discord_nest)]
         info_entry = _to_str_list([self.decision, self.error])
         if sheet == names["DAILY_RUNS"]:
-            return  (basic_entry + stamina_entry + [_to_str(self.daily_points)] + future_stamina + [_bool_to_str(self.run_nightmare)]  + info_entry)
+            return  (basic_entry + stamina_entry + [_to_str(self.daily_points)] + future_stamina + nest_entry + info_entry)
         if sheet == names["STAMINA_RUNS"]:
             return (basic_entry + stamina_entry + future_stamina + info_entry)
         raise ValueError(f"Unsupported sheet '{sheet}' for result row.")
@@ -207,6 +210,7 @@ class GoogleSheetClient:
             exit_game_after_daily = self._get_bool(rows[13][1]),
             shutdown_after_daily = self._get_bool(rows[14][1]),
             run_nightmare = self._get_bool(rows[17][1]),
+            run_tacet_discord_nest = self._get_bool(rows[17][3]),
             run_stamina = self._get_bool(rows[12][3]),
             exit_game_after_stamina = self._get_bool(rows[13][3]),
             shutdown_after_stamina = self._get_bool(rows[14][3]),

@@ -21,7 +21,7 @@ class TacetTask(WWOneTimeTask, BaseCombatTask):
             'Max Stamina to Spend': 0,  # 0 = unlimited, otherwise stops after spending this much
             'Prefer Single Spend': False,  # force single-spend even if stamina is enough for double
         }
-        self.total_number = 12
+        self.total_number = 14
         self.target_enemy_time_out = 10
         default_config.update(self.default_config)
         self.config_description = {
