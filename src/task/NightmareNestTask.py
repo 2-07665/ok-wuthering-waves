@@ -16,7 +16,7 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         self.target_enemy_time_out = 10
         self.name = "Nightmare Nest Task"
         self.description = "Auto Farm all Nightmare Nest"
-        self.group_name = "Dungeon"
+        self.group_name = "Daily"
         self.group_icon = FluentIcon.HOME
         self.icon = FluentIcon.CALORIES
         self.count_re = re.compile(r"(\d{1,2})/(\d{1,2})")
@@ -28,6 +28,7 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         self.step = 0
         while nest := self.get_nest_to_go():
             self.combat_nest(nest)
+        self.ensure_main(time_out=30)
 
     def combat_nest(self, nest):
         self.click(nest, after_sleep=2)
@@ -37,10 +38,10 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         while self.find_f_with_text():
             self.send_key('f', after_sleep=1)
             self.wait_in_team_and_world(time_out=40, raise_if_not_found=False)
-        self.run_until(self.in_combat, 'w', time_out=10, running=True)
+        self.run_until(self.in_combat, 'w', time_out=10, running=False)
         self.combat_once()
         self.sleep(3)
-        if not self.walk_find_echo(time_out=5):
+        if not self.walk_find_echo(time_out=5, backward_time=2.5):
             dropped = self.yolo_find_echo(turn=True, use_color=False, time_out=30)[0]
             logger.info(f'farm echo yolo find {dropped}')
         else:
