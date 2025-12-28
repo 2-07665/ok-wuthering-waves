@@ -8,7 +8,8 @@ from custom.ok_wrap import (
     start_ok_and_game,
     run_onetime_task,
     request_shutdown,
-    read_live_stamina
+    read_live_stamina,
+    read_api_daily_info
 )
 from custom.time_utils import now, calculate_burn
 from custom.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
