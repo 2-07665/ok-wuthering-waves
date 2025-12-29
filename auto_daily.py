@@ -12,6 +12,7 @@ from custom.ok_wrap import (
 )
 from custom.time_utils import now
 from custom.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
+from custom.email_sender import send_daily_run_report
 from src.task.DailyTask import DailyTask
 
 
@@ -86,6 +87,12 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
     sheet_client.update_stamina_from_run(result)
     sheet_client.append_run_result(result)
+
+    try:
+        send_daily_run_report(result, sheet_config)
+        logger.info("MY-OK-WW: Daily task email sent")
+    except Exception as exc:
+        logger.warning(f"MY-OK-WW: Failed to send daily task email: {exc}")
     
     return result, sheet_config
 

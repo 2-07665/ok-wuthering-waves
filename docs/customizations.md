@@ -5,14 +5,12 @@
 Keep these diffs in mind when pulling upstream updates.
 
 
-# Codes managed by AI without human review
+# Codes managed by AI
 
 - **Log filter**: `custom/log_filter`
 
 - **Official API**: `custom/waves_api` adapted from WutheringWavesUID
 
+- **Email**: `custom/email_sender` send run results via mailgun api
+
 - **Fast farm 4C task**: `custom/task/my_FastFarmEchoTask`
-
-# To-do list
-
-- Rebuild email sender.

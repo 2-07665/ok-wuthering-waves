@@ -4,7 +4,8 @@ import datetime as dt
 from functools import lru_cache
 from custom.time_utils import now, format_timestamp, format_duration, predict_future_stamina, minutes_until_next_daily
 
-from custom.env_vars import env
+from custom.env_vars import env, required_env
+from custom.format_utils import bool_label, safe_str, safe_str_list
 import base64
 import json
 
@@ -14,19 +15,13 @@ from google.oauth2.service_account import Credentials
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 
-def _required_env(name: str) -> str:
-    value = env(name, required=True)
-    assert value is not None
-    return value
-
-
 @lru_cache(maxsize=1)
 def sheet_names() -> dict[str, str]:
     return {
-        "CONFIG": _required_env("SHEET_NAME_CONFIG"),
-        "DAILY_RUNS": _required_env("SHEET_NAME_DAILY"),
-        "STAMINA_RUNS": _required_env("SHEET_NAME_STAMINA"),
-        "FAST_FARM_RUNS": _required_env("SHEET_NAME_FASTFARM"),
+        "CONFIG": required_env("SHEET_NAME_CONFIG"),
+        "DAILY_RUNS": required_env("SHEET_NAME_DAILY"),
+        "STAMINA_RUNS": required_env("SHEET_NAME_STAMINA"),
+        "FAST_FARM_RUNS": required_env("SHEET_NAME_FASTFARM"),
     }
 
 
@@ -63,18 +58,6 @@ class SheetRunConfig:
     tacet_set2: str = ""
 
 
-def _to_str(value) -> str:
-    return "" if value is None else str(value)
-    
-
-def _to_str_list(values: list) -> list[str]:
-    return [_to_str(v) for v in values]
-
-
-def _bool_to_str(value: bool) -> str:
-    return "是" if value else "否"
-
-
 @dataclass
 class RunResult:
     task_type: str
@@ -108,15 +91,16 @@ class RunResult:
         total_seconds = max(0, int(round((end - self.started_at).total_seconds())))
         if self.stamina_left is not None:
             next_daily_stamina, next_daily_backup_stamina = predict_future_stamina(self.stamina_left, self.backup_stamina_left, minutes_until_next_daily(end))
-            future_stamina = _to_str_list([next_daily_stamina, next_daily_backup_stamina])
-        else: future_stamina = ["", ""]
+            future_stamina = safe_str_list([next_daily_stamina, next_daily_backup_stamina])
+        else:
+            future_stamina = ["", ""]
 
         basic_entry = [format_timestamp(self.started_at), format_timestamp(end), format_duration(total_seconds), self.status]
-        stamina_entry = _to_str_list([self.stamina_start, self.backup_stamina_start, self.stamina_used, self.stamina_left, self.backup_stamina_left])
-        nest_entry = [_bool_to_str(self.run_nightmare), _bool_to_str(self.run_tacet_discord_nest)]
-        info_entry = _to_str_list([self.decision, self.error])
+        stamina_entry = safe_str_list([self.stamina_start, self.backup_stamina_start, self.stamina_used, self.stamina_left, self.backup_stamina_left])
+        nest_entry = [bool_label(self.run_nightmare), bool_label(self.run_tacet_discord_nest)]
+        info_entry = safe_str_list([self.decision, self.error])
         if sheet == names["DAILY_RUNS"]:
-            return  (basic_entry + stamina_entry + [_to_str(self.daily_points)] + future_stamina + nest_entry + info_entry)
+            return  (basic_entry + stamina_entry + [safe_str(self.daily_points)] + future_stamina + nest_entry + info_entry)
         if sheet == names["STAMINA_RUNS"]:
             return (basic_entry + stamina_entry + future_stamina + info_entry)
         raise ValueError(f"Unsupported sheet '{sheet}' for result row.")
@@ -128,7 +112,7 @@ class RunResult:
         start_total = (self.stamina_start or 0) + (self.backup_stamina_start or 0)
         end_total = (self.stamina_left or 0) + (self.backup_stamina_left or 0)
         consumed = max(0, start_total - end_total)
-        self.stamina_used = int(round(consumed / 20.0)) * 20
+        self.stamina_used = int(round(consumed / 60.0)) * 60
 
 
 @dataclass
@@ -162,9 +146,9 @@ class FastFarmResult:
         self.fill_echo_number_gained()
 
         basic_entry = [format_timestamp(self.started_at), format_timestamp(end), format_duration(total_seconds), self.status]
-        fight_entry = _to_str_list([self.fight_count, self.fight_speed])
-        echo_entry = _to_str_list([self.echo_number_start, self.echo_number_end, self.echo_number_gained, self.merge_count])
-        info_entry = [_to_str(self.error)]
+        fight_entry = safe_str_list([self.fight_count, self.fight_speed])
+        echo_entry = safe_str_list([self.echo_number_start, self.echo_number_end, self.echo_number_gained, self.merge_count])
+        info_entry = [safe_str(self.error)]
 
         return (basic_entry + fight_entry + echo_entry + info_entry)
     

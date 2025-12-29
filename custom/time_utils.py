@@ -16,6 +16,11 @@ def format_timestamp(value: dt.datetime) -> str:
     return value.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def format_date(value: dt.datetime) -> str:
+    """Return a YYYY-MM-DD date string."""
+    return value.strftime("%Y-%m-%d")
+
+
 def format_duration(total_seconds: float | int) -> str:
     """Convert durations in seconds to the form "4d 3h 2m 30s"."""
     seconds = max(0, int(total_seconds))

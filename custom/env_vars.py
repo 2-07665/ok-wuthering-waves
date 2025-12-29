@@ -30,3 +30,10 @@ def env(name: str, default: str | None = None, *, required: bool = False) -> str
     if required and value is None:
         raise RuntimeError(f"Environment variable '{name}' is required but missing.")
     return value
+
+
+def required_env(name: str) -> str:
+    """Read a required environment variable and return the value."""
+    value = env(name, required=True)
+    assert value is not None
+    return value

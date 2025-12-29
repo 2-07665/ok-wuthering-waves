@@ -13,6 +13,7 @@ from custom.ok_wrap import (
 from custom.waves_api import read_api_daily_info
 from custom.time_utils import now, calculate_burn
 from custom.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
+from custom.email_sender import send_stamina_run_report
 from src.task.TacetTask import TacetTask
 
 
@@ -71,6 +72,10 @@ def run() -> tuple[RunResult, SheetRunConfig]:
             if ok is None:
                 ok = start_ok_and_game()
                 stamina_task = ok.task_executor.get_task_by_class(TacetTask)
+                stamina, backup_stamina = read_live_stamina(stamina_task)
+            if stamina is not None:
+                result.stamina_start = stamina
+                result.backup_stamina_start = backup_stamina
 
             apply_stamina_config(sheet_config, stamina_task, burn)
             run_onetime_task(ok.task_executor, stamina_task, timeout = 600)
@@ -111,6 +116,12 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
     sheet_client.update_stamina_from_run(result)
     sheet_client.append_run_result(result)
+
+    try:
+        send_stamina_run_report(result, sheet_config)
+        logger.info("MY-OK-WW: Stamina task email sent")
+    except Exception as exc:
+        logger.warning(f"MY-OK-WW: Failed to send stamina task email: {exc}")
 
     return result, sheet_config
 
