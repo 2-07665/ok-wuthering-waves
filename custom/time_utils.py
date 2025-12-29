@@ -52,8 +52,8 @@ DAILYTASK_STAMINA = 180
 TACETFARM_STAMINA_UNIT = 60
 
 BEIJING_TZ = dt.timezone(dt.timedelta(hours=8), name="UTC+08")
-DAILY_TARGET_HOUR: int = 4
-DAILY_TARGET_MINUTE: int = 30
+DAILY_TARGET_HOUR: int = 5
+DAILY_TARGET_MINUTE: int = 0
 
 
 def predict_future_stamina(stamina: int, backup_stamina: int | None, minutes: int) -> tuple[int, int]:
