@@ -16,5 +16,7 @@ def bool_label(value: bool) -> str:
     return "是" if value else "否"
 
 
-def success_label(value: bool) -> str:
+def success_label(value: bool | None) -> str:
+    if value is None:
+        return ""
     return "成功" if value else "失败"

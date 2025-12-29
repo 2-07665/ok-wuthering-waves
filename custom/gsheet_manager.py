@@ -75,7 +75,7 @@ class RunResult:
     run_nightmare: bool = False
 
     daily_points: int | None = None
-    sign_in_success: bool = False
+    sign_in_success: bool | None = None
 
     decision: str | None = None
     error: str | None = None
