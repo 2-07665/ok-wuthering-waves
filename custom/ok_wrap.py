@@ -14,7 +14,6 @@ from custom.ui_boxes import get_ui_box
 import subprocess
 
 from custom.env_vars import env
-from custom.waves_api import WavesDailyClient, extract_daily_metrics
 
 def start_ok() -> OK:
     config["use_gui"] = False
@@ -228,31 +227,6 @@ def my_read_live_stamina(task: BaseWWTask) -> tuple[int | None, int | None]:
     except Exception as exc:
         logger.error("MY-OK-WW: Failed to read live stamina", exc)
         return None, None
-
-
-def read_api_daily_info(client: WavesDailyClient | None = None) -> tuple[int | None, int | None, int | None]:
-    """Return stamina, backup stamina, and daily points via Kuro API (no OCR)."""
-    should_close = client is None
-    client = client or WavesDailyClient()
-    try:
-        resp = client.get_daily_info()
-        metrics = extract_daily_metrics(resp)
-        if not metrics:
-            logger.warning("MY-OK-WW: 读取体力失败 (API)")
-            return None, None, None
-        stamina = metrics.get("stamina")
-        backup_stamina = metrics.get("backup_stamina")
-        daily_points = metrics.get("liveness")
-        logger.info(
-            f"MY-OK-WW: 当前体力 {stamina}，当前后备体力 {backup_stamina}，当前日常点数 {daily_points}"
-        )
-        return stamina, backup_stamina, daily_points
-    except Exception as exc:
-        logger.error("MY-OK-WW: 读取体力失败 (API)", exc)
-        return None, None, None
-    finally:
-        if should_close:
-            client.close()
 
 
 def read_echo_number(task: BaseWWTask, *, retries: int = 3, retry_sleep: float = 10.0, ocr_timeout: int = 5) -> int | None:

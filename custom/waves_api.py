@@ -150,11 +150,40 @@ def extract_daily_metrics(resp: dict[str, Any]) -> dict[str, int] | None:
     store_energy = data.get("storeEnergyData") or {}
     liveness = data.get("livenessData") or {}
 
+    stamina = energy.get("cur")
+    backup_stamina = store_energy.get("cur")
+    daily_points = liveness.get("cur")
+
+    if stamina is None or backup_stamina is None or daily_points is None:
+        return None
+
     try:
         return {
-            "stamina": int(energy.get("cur", 0)),
-            "backup_stamina": int(store_energy.get("cur", 0)),
-            "liveness": int(liveness.get("cur", 0)),
+            "stamina": int(stamina),
+            "backup_stamina": int(backup_stamina),
+            "daily_points": int(daily_points),
         }
     except (TypeError, ValueError):
         return None
+
+
+def read_api_daily_info(
+    client: WavesDailyClient | None = None,
+) -> tuple[int | None, int | None, int | None]:
+    """Return stamina, backup stamina, and daily points via Kuro API (no OCR)."""
+    should_close = client is None
+    client = client or WavesDailyClient()
+    try:
+        resp = client.get_daily_info()
+        metrics = extract_daily_metrics(resp)
+        if not metrics:
+            return None, None, None
+        stamina = metrics.get("stamina")
+        backup_stamina = metrics.get("backup_stamina")
+        daily_points = metrics.get("daily_points")
+        return stamina, backup_stamina, daily_points
+    except Exception:
+        return None, None, None
+    finally:
+        if should_close:
+            client.close()
