@@ -10,6 +10,7 @@ from custom.ok_wrap import (
     request_shutdown,
     read_live_stamina
 )
+from custom.waves_api import read_api_daily_info
 from custom.time_utils import now
 from custom.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
 from custom.email_sender import send_daily_run_report
@@ -46,8 +47,25 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.status = "skipped"
         result.decision = "日常任务设置为不执行"
         result.run_nightmare = False
-        logger.info(f"MY-OK-WW: Skipping run because {result.decision}")
         sheet_client.append_run_result(result)
+        send_daily_run_report(result, sheet_config)
+        return result, sheet_config
+
+    stamina, backup_stamina, daily_points = read_api_daily_info()
+    if daily_points is not None and daily_points >= 100:
+        result.ended_at = result.started_at
+        result.status = "skipped"
+        result.decision = "日常任务已完成"
+        result.stamina_start = stamina
+        result.stamina_left = stamina
+        result.backup_stamina_start = backup_stamina
+        result.backup_stamina_left = backup_stamina
+        result.stamina_used = 0
+        result.daily_points = daily_points
+        
+        sheet_client.update_stamina_from_run(result)
+        sheet_client.append_run_result(result)
+        send_daily_run_report(result, sheet_config)
         return result, sheet_config
 
     ok = None
@@ -87,12 +105,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
     sheet_client.update_stamina_from_run(result)
     sheet_client.append_run_result(result)
-
-    try:
-        send_daily_run_report(result, sheet_config)
-        logger.info("MY-OK-WW: Daily task email sent")
-    except Exception as exc:
-        logger.warning(f"MY-OK-WW: Failed to send daily task email: {exc}")
+    send_daily_run_report(result, sheet_config)
     
     return result, sheet_config
 

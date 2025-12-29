@@ -45,8 +45,8 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.ended_at = result.started_at
         result.status = "skipped"
         result.decision = "体力任务设置为不执行"
-        logger.info(f"MY-OK_WW: Skipping run because {result.decision}")
         sheet_client.append_run_result(result)
+        send_stamina_run_report(result, sheet_config)
         return result, sheet_config
 
     ok = None
@@ -116,12 +116,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
     sheet_client.update_stamina_from_run(result)
     sheet_client.append_run_result(result)
-
-    try:
-        send_stamina_run_report(result, sheet_config)
-        logger.info("MY-OK-WW: Stamina task email sent")
-    except Exception as exc:
-        logger.warning(f"MY-OK-WW: Failed to send stamina task email: {exc}")
+    send_stamina_run_report(result, sheet_config)
 
     return result, sheet_config
 
