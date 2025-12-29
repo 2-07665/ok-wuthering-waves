@@ -9,6 +9,8 @@ Keep these diffs in mind when pulling upstream updates.
 
 - **Log filter**: `custom/log_filter`
 
+- **Official API**: `custom/waves_api` adapted from WutheringWavesUID
+
 - **Fast farm 4C task**: `custom/task/my_FastFarmEchoTask`
 
 # To-do list
