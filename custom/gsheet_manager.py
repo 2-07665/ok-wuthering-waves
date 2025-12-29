@@ -5,7 +5,7 @@ from functools import lru_cache
 from custom.time_utils import now, format_timestamp, format_duration, predict_future_stamina, minutes_until_next_daily
 
 from custom.env_vars import env, required_env
-from custom.format_utils import bool_label, safe_str, safe_str_list
+from custom.format_utils import safe_str, safe_str_list, bool_label, success_label
 import base64
 import json
 
@@ -46,7 +46,6 @@ class SheetRunConfig:
     exit_game_after_daily: bool = False
     shutdown_after_daily: bool = False
     run_nightmare: bool = False
-    run_tacet_discord_nest: bool = False
     
     run_stamina: bool = True
     exit_game_after_stamina: bool = False
@@ -74,9 +73,9 @@ class RunResult:
     backup_stamina_left: int | None = None
 
     run_nightmare: bool = False
-    run_tacet_discord_nest: bool = False
 
     daily_points: int | None = None
+    sign_in_success: bool = False
 
     decision: str | None = None
     error: str | None = None
@@ -97,10 +96,11 @@ class RunResult:
 
         basic_entry = [format_timestamp(self.started_at), format_timestamp(end), format_duration(total_seconds), self.status]
         stamina_entry = safe_str_list([self.stamina_start, self.backup_stamina_start, self.stamina_used, self.stamina_left, self.backup_stamina_left])
-        nest_entry = [bool_label(self.run_nightmare), bool_label(self.run_tacet_discord_nest)]
         info_entry = safe_str_list([self.decision, self.error])
         if sheet == names["DAILY_RUNS"]:
-            return  (basic_entry + stamina_entry + [safe_str(self.daily_points)] + future_stamina + nest_entry + info_entry)
+            sign_in_entry = [success_label(self.sign_in_success)]
+            nest_entry = [bool_label(self.run_nightmare)]
+            return  (basic_entry + stamina_entry + [safe_str(self.daily_points)] + future_stamina + sign_in_entry + nest_entry + info_entry)
         if sheet == names["STAMINA_RUNS"]:
             return (basic_entry + stamina_entry + future_stamina + info_entry)
         raise ValueError(f"Unsupported sheet '{sheet}' for result row.")
@@ -194,7 +194,6 @@ class GoogleSheetClient:
             exit_game_after_daily = self._get_bool(rows[13][1]),
             shutdown_after_daily = self._get_bool(rows[14][1]),
             run_nightmare = self._get_bool(rows[17][1]),
-            run_tacet_discord_nest = self._get_bool(rows[17][3]),
             run_stamina = self._get_bool(rows[12][3]),
             exit_game_after_stamina = self._get_bool(rows[13][3]),
             shutdown_after_stamina = self._get_bool(rows[14][3]),
@@ -270,6 +269,7 @@ if __name__ == "__main__":
             backup_stamina_left = 20,
 
             daily_points = 120,
+            sign_in_success = True,
 
             decision = "测试写入日常任务结果",
         )

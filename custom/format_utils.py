@@ -14,3 +14,7 @@ def safe_str_list(values: Iterable[Any]) -> list[str]:
 
 def bool_label(value: bool) -> str:
     return "是" if value else "否"
+
+
+def success_label(value: bool) -> str:
+    return "成功" if value else "失败"

@@ -7,7 +7,7 @@ from typing import Any
 import requests
 
 from custom.env_vars import env, required_env
-from custom.format_utils import bool_label, safe_str
+from custom.format_utils import safe_str, bool_label, success_label
 from custom.gsheet_manager import RunResult, SheetRunConfig
 from custom.time_utils import (
     format_duration,
@@ -109,6 +109,8 @@ def build_daily_template_variables(result: RunResult, sheet_config: SheetRunConf
     if result.daily_points is not None:
         daily_complete_label = "是" if result.daily_points >= 100 else "否"
 
+    sign_in_label = success_label(result.sign_in_success)
+
     return {
         "title": f"日常任务 · {status_label}",
         "status_color": status_color,
@@ -124,6 +126,7 @@ def build_daily_template_variables(result: RunResult, sheet_config: SheetRunConf
         "stamina_used": safe_str(result.stamina_used),
         "daily_points": safe_str(result.daily_points),
         "daily_complete_label": daily_complete_label,
+        "sign_in_label": sign_in_label,
         "run_daily": bool_label(sheet_config.run_daily),
         "run_nightmare": bool_label(sheet_config.run_nightmare),
         "tacet_name": safe_str(sheet_config.tacet_name),
@@ -195,6 +198,7 @@ def _daily_text_summary(variables: Mapping[str, Any]) -> str:
         f"时长: {safe_str(variables.get('duration'))}",
         f"体力: {safe_str(variables.get('stamina_start'))} -> {safe_str(variables.get('stamina_left'))}",
         f"日常积分: {safe_str(variables.get('daily_points'))}",
+        f"库街区签到: {safe_str(variables.get('sign_in_label'))}",
     ]
     decision = safe_str(variables.get("decision"))
     error = safe_str(variables.get("error"))
