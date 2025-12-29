@@ -12,12 +12,15 @@ from custom.ok_wrap import (
 )
 from custom.waves_api import WavesDailyClient, read_api_daily_info
 from custom.time_utils import now
+from custom.env_vars import env_bool
 from custom.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
 from custom.email_sender import send_daily_run_report
 from src.task.DailyTask import DailyTask
 
 
 RUN_MODE = "daily"
+
+WAVES_API_ENABLED_ENV = "WAVES_API_ENABLED"
 
 
 def _api_success(resp: dict | None) -> bool:
@@ -50,22 +53,23 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         run_nightmare = sheet_config.run_nightmare
     )
 
-    client = WavesDailyClient()
-    try:
+    stamina = backup_stamina = daily_points = None
+    if env_bool(WAVES_API_ENABLED_ENV, default=False):
+        client = WavesDailyClient()
         try:
-            sign_in_resp = client.sign_in()
-            result.sign_in_success = _api_success(sign_in_resp)
-        except Exception:
-            result.sign_in_success = False
-        stamina, backup_stamina, daily_points = read_api_daily_info(client=client)
-    finally:
-        client.close()
+            try:
+                sign_in_resp = client.sign_in()
+                result.sign_in_success = _api_success(sign_in_resp)
+            except Exception:
+                result.sign_in_success = False
+            stamina, backup_stamina, daily_points = read_api_daily_info(client=client)
+        finally:
+            client.close()
 
     result.stamina_start = stamina
     result.backup_stamina_start = backup_stamina
     result.stamina_left = stamina
     result.backup_stamina_left = backup_stamina
-    result.stamina_used = 0
     result.daily_points = daily_points
 
     if not sheet_config.run_daily:
@@ -73,7 +77,8 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.status = "skipped"
         result.decision = "日常任务设置为不执行"
         result.run_nightmare = False
-        
+        result.stamina_used = 0
+
         sheet_client.update_stamina_from_run(result)
         sheet_client.append_run_result(result)
         send_daily_run_report(result, sheet_config)
@@ -84,6 +89,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.status = "skipped"
         result.decision = "日常任务已完成"
         result.run_nightmare = False
+        result.stamina_used = 0
 
         sheet_client.update_stamina_from_run(result)
         sheet_client.append_run_result(result)

@@ -37,3 +37,12 @@ def required_env(name: str) -> str:
     value = env(name, required=True)
     assert value is not None
     return value
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    """Read a boolean environment variable with a default."""
+    raw = env(name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    return normalized in {"true", "1", "yes", "y", "是", "on"}

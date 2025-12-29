@@ -12,12 +12,15 @@ from custom.ok_wrap import (
 )
 from custom.waves_api import read_api_daily_info
 from custom.time_utils import now, calculate_burn
+from custom.env_vars import env_bool
 from custom.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
 from custom.email_sender import send_stamina_run_report
 from src.task.TacetTask import TacetTask
 
 
 RUN_MODE = "stamina"
+
+WAVES_API_ENABLED_ENV = "WAVES_API_ENABLED"
 
 
 def apply_stamina_config(sheet_config: SheetRunConfig, stamina_task: TacetTask, burn: int) -> None:
@@ -41,22 +44,33 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         status = "running",
     )
 
-    if not sheet_config.run_stamina:
-        result.ended_at = result.started_at
-        result.status = "skipped"
-        result.decision = "体力任务设置为不执行"
-        sheet_client.append_run_result(result)
-        send_stamina_run_report(result, sheet_config)
-        return result, sheet_config
-
     ok = None
     stamina_task = None
     try:
-        stamina, backup_stamina, _ = read_api_daily_info()
+        stamina = backup_stamina = None
+        if env_bool(WAVES_API_ENABLED_ENV, default=False):
+            stamina, backup_stamina, _ = read_api_daily_info()
+
+        if not sheet_config.run_stamina:
+            result.ended_at = result.started_at
+            result.status = "skipped"
+            result.decision = "体力任务设置为不执行"
+
+            result.stamina_start = stamina
+            result.backup_stamina_start = backup_stamina
+            result.stamina_left = stamina
+            result.backup_stamina_left = backup_stamina
+            result.stamina_used = 0
+
+            sheet_client.update_stamina_from_run(result)
+            sheet_client.append_run_result(result)
+            send_stamina_run_report(result, sheet_config)
+            return result, sheet_config
 
         if stamina is None:
             ok = start_ok_and_game()
-            logger.warning("MY-OK-WW: API 体力读取失败，改为游戏内读取")
+            if env_bool(WAVES_API_ENABLED_ENV, default=False):
+                logger.warning("MY-OK-WW: API 体力读取失败，改为游戏内读取")
             stamina_task = ok.task_executor.get_task_by_class(TacetTask)
             stamina, backup_stamina = read_live_stamina(stamina_task)
         else:
