@@ -1,5 +1,6 @@
 import json
 import random
+from datetime import datetime
 from typing import Any
 
 import requests
@@ -14,6 +15,8 @@ ENV_TOKEN = "WAVES_TOKEN"
 ENV_DID = "WAVES_DID"
 MAIN_URL = "https://api.kurobbs.com"
 GAME_DATA_URL = f"{MAIN_URL}/gamer/widget/game3/getData"
+SIGNIN_URL = f"{MAIN_URL}/encourage/signIn/v2"
+SIGNIN_TASK_LIST_URL = f"{MAIN_URL}/encourage/signIn/initSignInV2"
 
 SERVER_ID = "76402e5b20be2c39f095a152090afddc"
 SERVER_ID_NET = "919752ae5ea09c1ced910dd668a63ffb"
@@ -127,6 +130,64 @@ class WavesDailyClient:
 
         try:
             resp = self.session.post(GAME_DATA_URL, headers=headers, data=data, timeout=timeout)
+        except requests.RequestException as exc:
+            return {"code": WAVES_CODE_999, "msg": str(exc), "data": None}
+
+        return _parse_response(resp)
+
+    def sign_in(
+        self,
+        role_id: str | None = None,
+        token: str | None = None,
+        *,
+        server_id: str | None = None,
+        timeout: float = 10.0,
+    ) -> dict[str, Any]:
+        if role_id is None:
+            role_id = env(ENV_ROLE_ID, required=True)
+        if token is None:
+            token = env(ENV_TOKEN, required=True)
+
+        headers = _build_base_headers(dev_code="")
+        headers.update({"token": token})
+
+        data = {
+            "gameId": WAVES_GAME_ID,
+            "serverId": _get_server_id(role_id, server_id),
+            "roleId": role_id,
+            "reqMonth": f"{datetime.now().month:02}",
+        }
+
+        try:
+            resp = self.session.post(SIGNIN_URL, headers=headers, data=data, timeout=timeout)
+        except requests.RequestException as exc:
+            return {"code": WAVES_CODE_999, "msg": str(exc), "data": None}
+
+        return _parse_response(resp)
+
+    def sign_in_task_list(
+        self,
+        role_id: str | None = None,
+        token: str | None = None,
+        *,
+        server_id: str | None = None,
+        timeout: float = 10.0,
+    ) -> dict[str, Any]:
+        if role_id is None:
+            role_id = env(ENV_ROLE_ID, required=True)
+        if token is None:
+            token = env(ENV_TOKEN, required=True)
+
+        headers = _build_base_headers(dev_code="")
+        headers.update({"token": token})
+        data = {
+            "gameId": WAVES_GAME_ID,
+            "serverId": _get_server_id(role_id, server_id),
+            "roleId": role_id,
+        }
+
+        try:
+            resp = self.session.post(SIGNIN_TASK_LIST_URL, headers=headers, data=data, timeout=timeout)
         except requests.RequestException as exc:
             return {"code": WAVES_CODE_999, "msg": str(exc), "data": None}
 

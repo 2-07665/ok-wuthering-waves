@@ -1,11 +1,12 @@
-from custom.waves_api import WavesDailyClient, read_api_daily_info
+from custom.waves_api import WavesDailyClient
 
 
 def main() -> None:
     client = WavesDailyClient()
     resp = client.get_daily_info()
     print(resp)
-    print(read_api_daily_info(client))
+    resp = client.sign_in()
+    print(resp)
     client.close()
 
 
