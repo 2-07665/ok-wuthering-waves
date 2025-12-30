@@ -63,7 +63,7 @@ class FiveToOneTask(BaseWWTask):
                 return
 
             self.wait_click_ocr(*get_ui_box("数据坞批量融合确认按钮"), match="确认", time_out=20, raise_if_not_found=False, settle_time=0.2, after_sleep=1.0)
-            self.wait_ocr(*get_ui_box("数据坞批量融合获得声骸"), match="获得", time_out=20, raise_if_not_found=False, settle_time=1.0)
+            self.wait_ocr(*get_ui_box("数据坞批量融合获得声骸"), match="获得声骸", time_out=20, raise_if_not_found=False, settle_time=1.0)
             self.info_incr("Merge Count", merge_count)
             self.click_relative(0.5, 0.05, after_sleep=1.0)
 
