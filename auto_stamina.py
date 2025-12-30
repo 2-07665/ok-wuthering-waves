@@ -21,6 +21,7 @@ from src.task.TacetTask import TacetTask
 RUN_MODE = "stamina"
 
 WAVES_API_ENABLED_ENV = "WAVES_API_ENABLED"
+EMAIL_REPORT_ENABLED_ENV = "EMAIL_REPORT_ENABLED"
 
 
 def apply_stamina_config(sheet_config: SheetRunConfig, stamina_task: TacetTask, burn: int) -> None:
@@ -31,6 +32,13 @@ def apply_stamina_config(sheet_config: SheetRunConfig, stamina_task: TacetTask, 
         f"MY-OK-WW: Loaded stamina config: run_stamina={sheet_config.run_stamina}, "
         f"tacet #{sheet_config.tacet_serial}, burn={burn}"
     )
+
+
+def _send_stamina_report(result: RunResult, sheet_config: SheetRunConfig) -> None:
+    if env_bool(EMAIL_REPORT_ENABLED_ENV, default=True):
+        send_stamina_run_report(result, sheet_config)
+        return
+    logger.info(f"MY-OK-WW: Stamina email report disabled via {EMAIL_REPORT_ENABLED_ENV}")
 
 
 def run() -> tuple[RunResult, SheetRunConfig]:
@@ -64,7 +72,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
             sheet_client.update_stamina_from_run(result)
             sheet_client.append_run_result(result)
-            send_stamina_run_report(result, sheet_config)
+            _send_stamina_report(result, sheet_config)
             return result, sheet_config
 
         if stamina is None:
@@ -130,7 +138,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
     sheet_client.update_stamina_from_run(result)
     sheet_client.append_run_result(result)
-    send_stamina_run_report(result, sheet_config)
+    _send_stamina_report(result, sheet_config)
 
     return result, sheet_config
 

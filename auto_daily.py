@@ -21,6 +21,7 @@ from src.task.DailyTask import DailyTask
 RUN_MODE = "daily"
 
 WAVES_API_ENABLED_ENV = "WAVES_API_ENABLED"
+EMAIL_REPORT_ENABLED_ENV = "EMAIL_REPORT_ENABLED"
 
 
 def _api_success(resp: dict | None) -> bool:
@@ -29,6 +30,13 @@ def _api_success(resp: dict | None) -> bool:
     if resp.get("success") is True:
         return True
     return resp.get("code") in (0, 200, 1511)
+
+
+def _send_daily_report(result: RunResult, sheet_config: SheetRunConfig) -> None:
+    if env_bool(EMAIL_REPORT_ENABLED_ENV, default=True):
+        send_daily_run_report(result, sheet_config)
+        return
+    logger.info(f"MY-OK-WW: Daily email report disabled via {EMAIL_REPORT_ENABLED_ENV}")
 
 
 def apply_daily_config(sheet_config: SheetRunConfig, daily_task: DailyTask) -> None:
@@ -81,7 +89,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
         sheet_client.update_stamina_from_run(result)
         sheet_client.append_run_result(result)
-        send_daily_run_report(result, sheet_config)
+        _send_daily_report(result, sheet_config)
         return result, sheet_config
 
     if daily_points is not None and daily_points >= 100:
@@ -93,7 +101,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
         sheet_client.update_stamina_from_run(result)
         sheet_client.append_run_result(result)
-        send_daily_run_report(result, sheet_config)
+        _send_daily_report(result, sheet_config)
         return result, sheet_config
 
     ok = None
@@ -133,7 +141,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
     sheet_client.update_stamina_from_run(result)
     sheet_client.append_run_result(result)
-    send_daily_run_report(result, sheet_config)
+    _send_daily_report(result, sheet_config)
     
     return result, sheet_config
 
