@@ -98,7 +98,6 @@ def run():
             
             break
 
-    ok.task_executor.stop()
     ok.device_manager.stop_hwnd()
     ok.quit()
 

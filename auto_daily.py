@@ -134,7 +134,6 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         logger.error("MY-OK-WW: Automation failed", exc)
     finally:
         if ok is not None:
-            ok.task_executor.stop()
             if sheet_config.exit_game_after_daily or sheet_config.shutdown_after_daily:
                 ok.device_manager.stop_hwnd()
             ok.quit()
