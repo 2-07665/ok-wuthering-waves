@@ -1,5 +1,7 @@
 from config import config
-from ok import OK, Logger, execute
+import importlib
+
+from ok import OK, Logger, execute, og
 logger = Logger.get_logger(__name__)
 import custom.log_filter
 
@@ -18,7 +20,20 @@ from custom.env_vars import env
 def start_ok() -> OK:
     config["use_gui"] = False
     ok = OK(config)
+    initialize_my_app(ok)
     return ok
+
+
+def initialize_my_app(ok: OK) -> None:
+    if og.my_app is not None:
+        return
+    my_app = config.get("my_app")
+    module_name = my_app[0]
+    class_name = my_app[1]
+    module = importlib.import_module(module_name)
+    my_app_cls = getattr(module, class_name)
+    og.my_app = my_app_cls(ok.exit_event)
+    logger.info("MY-OK-WW: Initialized og.my_app for non-GUI startup")
 
 
 def ensure_ok_and_game_ready(ok: OK) -> None:
