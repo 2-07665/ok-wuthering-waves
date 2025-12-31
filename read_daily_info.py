@@ -5,8 +5,8 @@ def main() -> None:
     client = WavesDailyClient()
     resp = client.get_daily_info()
     print(resp)
-    #resp = client.sign_in()
-    #print(resp)
+    resp = client.sign_in()
+    print(resp)
     client.close()
 
 

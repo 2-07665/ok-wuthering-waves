@@ -1,6 +1,6 @@
 import json
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import requests
@@ -85,6 +85,10 @@ def _parse_response(resp: requests.Response) -> dict[str, Any]:
     return raw_data
 
 
+def _beijing_now() -> datetime:
+    return datetime.utcnow() + timedelta(hours=8)
+
+
 class WavesDailyClient:
     def __init__(self, base_url: str | None = None, session: requests.Session | None = None) -> None:
         self.base_url = base_url or MAIN_URL
@@ -155,39 +159,11 @@ class WavesDailyClient:
             "gameId": WAVES_GAME_ID,
             "serverId": _get_server_id(role_id, server_id),
             "roleId": role_id,
-            "reqMonth": f"{datetime.now().month:02}",
+            "reqMonth": f"{_beijing_now().month:02}",
         }
 
         try:
             resp = self.session.post(SIGNIN_URL, headers=headers, data=data, timeout=timeout)
-        except requests.RequestException as exc:
-            return {"code": WAVES_CODE_999, "msg": str(exc), "data": None}
-
-        return _parse_response(resp)
-
-    def sign_in_task_list(
-        self,
-        role_id: str | None = None,
-        token: str | None = None,
-        *,
-        server_id: str | None = None,
-        timeout: float = 10.0,
-    ) -> dict[str, Any]:
-        if role_id is None:
-            role_id = env(ENV_ROLE_ID, required=True)
-        if token is None:
-            token = env(ENV_TOKEN, required=True)
-
-        headers = _build_base_headers(dev_code="")
-        headers.update({"token": token})
-        data = {
-            "gameId": WAVES_GAME_ID,
-            "serverId": _get_server_id(role_id, server_id),
-            "roleId": role_id,
-        }
-
-        try:
-            resp = self.session.post(SIGNIN_TASK_LIST_URL, headers=headers, data=data, timeout=timeout)
         except requests.RequestException as exc:
             return {"code": WAVES_CODE_999, "msg": str(exc), "data": None}
 
