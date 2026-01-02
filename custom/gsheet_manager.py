@@ -190,17 +190,17 @@ class GoogleSheetClient:
     def fetch_run_config(self) -> SheetRunConfig:
         rows = self.fetch_config_rows()
         return SheetRunConfig(
-            run_daily = self._get_bool(rows[12][1]),
-            exit_game_after_daily = self._get_bool(rows[13][1]),
-            shutdown_after_daily = self._get_bool(rows[14][1]),
-            run_nightmare = self._get_bool(rows[17][1]),
-            run_stamina = self._get_bool(rows[12][3]),
-            exit_game_after_stamina = self._get_bool(rows[13][3]),
-            shutdown_after_stamina = self._get_bool(rows[14][3]),
-            tacet_serial = int(rows[15][3]),
-            tacet_name = rows[15][1],
-            tacet_set1 = rows[16][1],
-            tacet_set2 = rows[16][3])
+            run_daily = self._get_bool(rows[8][1]),
+            exit_game_after_daily = self._get_bool(rows[9][1]),
+            shutdown_after_daily = self._get_bool(rows[10][1]),
+            run_nightmare = self._get_bool(rows[13][1]),
+            run_stamina = self._get_bool(rows[8][3]),
+            exit_game_after_stamina = self._get_bool(rows[9][3]),
+            shutdown_after_stamina = self._get_bool(rows[10][3]),
+            tacet_serial = int(rows[11][3]),
+            tacet_name = rows[11][1],
+            tacet_set1 = rows[12][1],
+            tacet_set2 = rows[12][3])
     
     def update_stamina(self, stamina: int, backup_stamina: int, updated_at: dt.datetime) -> None:
         """Update stamina cells on Config sheet (E2 for timestamp, B4/B5 for current values)."""
