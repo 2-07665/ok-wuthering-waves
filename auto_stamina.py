@@ -59,7 +59,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         if env_bool(WAVES_API_ENABLED_ENV, default=False):
             stamina, backup_stamina, _ = read_api_daily_info()
 
-        if not sheet_config.run_stamina:
+        if sheet_config.skip_stamina_once or (not sheet_config.run_stamina):
             result.ended_at = result.started_at
             result.status = "skipped"
             result.decision = "体力任务设置为不执行"
@@ -68,7 +68,11 @@ def run() -> tuple[RunResult, SheetRunConfig]:
             result.backup_stamina_start = backup_stamina
             result.stamina_left = stamina
             result.backup_stamina_left = backup_stamina
-            result.stamina_used = 0
+            if result.stamina_start is not None:
+                result.stamina_used = 0
+
+            if sheet_config.skip_stamina_once:
+                sheet_client.handle_skip_once(RUN_MODE)
 
             sheet_client.update_stamina_from_run(result)
             sheet_client.append_run_result(result)

@@ -43,11 +43,13 @@ def _load_spreadsheet_id() -> str:
 @dataclass
 class SheetRunConfig:
     run_daily: bool = True
+    skip_daily_once: bool = False
     exit_game_after_daily: bool = False
     shutdown_after_daily: bool = False
     run_nightmare: bool = False
     
     run_stamina: bool = True
+    skip_stamina_once: bool = False
     exit_game_after_stamina: bool = False
     shutdown_after_stamina: bool = False
     
@@ -191,17 +193,27 @@ class GoogleSheetClient:
         rows = self.fetch_config_rows()
         return SheetRunConfig(
             run_daily = self._get_bool(rows[8][1]),
-            exit_game_after_daily = self._get_bool(rows[9][1]),
-            shutdown_after_daily = self._get_bool(rows[10][1]),
-            run_nightmare = self._get_bool(rows[13][1]),
+            skip_daily_once = self._get_bool(rows[9][1]),
+            exit_game_after_daily = self._get_bool(rows[10][1]),
+            shutdown_after_daily = self._get_bool(rows[11][1]),
+            run_nightmare = self._get_bool(rows[14][1]),
             run_stamina = self._get_bool(rows[8][3]),
-            exit_game_after_stamina = self._get_bool(rows[9][3]),
-            shutdown_after_stamina = self._get_bool(rows[10][3]),
-            tacet_serial = int(rows[11][3]),
-            tacet_name = rows[11][1],
-            tacet_set1 = rows[12][1],
-            tacet_set2 = rows[12][3])
+            skip_stamina_once = self._get_bool(rows[9][3]),
+            exit_game_after_stamina = self._get_bool(rows[10][3]),
+            shutdown_after_stamina = self._get_bool(rows[11][3]),
+            tacet_serial = int(rows[12][3]),
+            tacet_name = rows[12][1],
+            tacet_set1 = rows[13][1],
+            tacet_set2 = rows[13][3],
+        )
     
+    def handle_skip_once(self, task_type: str) -> None:
+        ws = self.spreadsheet.worksheet(sheet_names()["CONFIG"])
+        if task_type.lower() == "daily":
+            ws.update([["FALSE"]], "B10", value_input_option = gspread.utils.ValueInputOption.user_entered)
+        if task_type.lower() == "stamina":
+            ws.update([["FALSE"]], "D10", value_input_option = gspread.utils.ValueInputOption.user_entered)
+
     def update_stamina(self, stamina: int, backup_stamina: int, updated_at: dt.datetime) -> None:
         """Update stamina cells on Config sheet (E2 for timestamp, B4/B5 for current values)."""
         ws = self.spreadsheet.worksheet(sheet_names()["CONFIG"])
@@ -218,7 +230,6 @@ class GoogleSheetClient:
             ws.update([[updated_at.strftime("%m-%d %H:%M")]], "E2", value_input_option = gspread.utils.ValueInputOption.user_entered)
             ws.update([[result.stamina_left], [backup]], "B4:B5", value_input_option = gspread.utils.ValueInputOption.user_entered)
         
-
     def _sheet_name_for_result(self, task_type: str) -> str:
         names = sheet_names()
         if task_type.lower() == "daily":

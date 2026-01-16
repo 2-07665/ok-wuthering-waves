@@ -80,12 +80,16 @@ def run() -> tuple[RunResult, SheetRunConfig]:
     result.backup_stamina_left = backup_stamina
     result.daily_points = daily_points
 
-    if not sheet_config.run_daily:
+    if sheet_config.skip_daily_once or (not sheet_config.run_daily):
         result.ended_at = result.started_at
         result.status = "skipped"
         result.decision = "日常任务设置为不执行"
         result.run_nightmare = False
-        result.stamina_used = 0
+        if result.stamina_start is not None:
+            result.stamina_used = 0
+
+        if sheet_config.skip_daily_once:
+            sheet_client.handle_skip_once(RUN_MODE)
 
         sheet_client.update_stamina_from_run(result)
         sheet_client.append_run_result(result)
