@@ -699,7 +699,7 @@ class BaseWWTask(BaseTask):
             #     self.click(self.find_boxes(texts, match="确认"), after_sleep=20)
             #     result = self.start_device()
             #     self.log_info(f'start_device end {result}')
-            #     self.sleep(20)
+            #     self.sleep(30)
             #     return False            
             if start := self.find_boxes(texts, boundary='bottom_right', match=["开始游戏", re.compile("进入游戏")]):
                 if not self.find_boxes(texts, boundary='bottom_right', match="登录"):
