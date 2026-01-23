@@ -85,6 +85,14 @@ def _parse_response(resp: requests.Response) -> dict[str, Any]:
     return raw_data
 
 
+def is_api_success(resp: dict | None) -> bool:
+    if not isinstance(resp, dict):
+        return False
+    if resp.get("success") is True:
+        return True
+    return resp.get("code") in (0, 200, 1511)
+
+
 def _beijing_now() -> datetime:
     beijing_tz = timezone(timedelta(hours=8))
     return datetime.now(timezone.utc).astimezone(beijing_tz)

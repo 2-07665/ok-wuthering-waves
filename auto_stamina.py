@@ -15,6 +15,7 @@ from custom.time_utils import now, calculate_burn
 from custom.env_vars import env_bool
 from custom.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
 from custom.email_sender import send_stamina_run_report
+
 from src.task.TacetTask import TacetTask
 
 
@@ -64,10 +65,8 @@ def run() -> tuple[RunResult, SheetRunConfig]:
             result.status = "skipped"
             result.decision = "体力任务设置为不执行"
 
-            result.stamina_start = stamina
-            result.backup_stamina_start = backup_stamina
-            result.stamina_left = stamina
-            result.backup_stamina_left = backup_stamina
+            result.fill_stamina_start(stamina, backup_stamina)
+            result.fill_stamina_left_from_start()
             if result.stamina_start is not None:
                 result.stamina_used = 0
 
@@ -85,11 +84,8 @@ def run() -> tuple[RunResult, SheetRunConfig]:
                 logger.warning("MY-OK-WW: API 体力读取失败，改为游戏内读取")
             stamina_task = ok.task_executor.get_task_by_class(TacetTask)
             stamina, backup_stamina = read_live_stamina(stamina_task)
-        else:
-            print(f"MY-OK-WW: API读取 体力 {stamina}，后备体力 {backup_stamina}\n")
 
-        result.stamina_start = stamina
-        result.backup_stamina_start = backup_stamina
+        result.fill_stamina_start(stamina, backup_stamina)
 
         should_run, burn, condition, reason = calculate_burn(stamina, backup_stamina)
         result.decision = reason
@@ -100,16 +96,14 @@ def run() -> tuple[RunResult, SheetRunConfig]:
                 stamina_task = ok.task_executor.get_task_by_class(TacetTask)
                 stamina, backup_stamina = read_live_stamina(stamina_task)
             if stamina is not None:
-                result.stamina_start = stamina
-                result.backup_stamina_start = backup_stamina
+                result.fill_stamina_start(stamina, backup_stamina)
 
             apply_stamina_config(sheet_config, stamina_task, burn)
             run_onetime_task(ok.task_executor, stamina_task, timeout = 600)
             
             stamina, backup_stamina = read_live_stamina(stamina_task)
 
-            result.stamina_left = stamina
-            result.backup_stamina_left = backup_stamina
+            result.fill_stamina_left(stamina, backup_stamina)
             result.fill_stamina_used()
 
             if condition and result.stamina_used == burn:
@@ -120,9 +114,9 @@ def run() -> tuple[RunResult, SheetRunConfig]:
 
         else:
             result.ended_at = result.started_at
-            result.stamina_left = result.stamina_start
-            result.backup_stamina_left = result.backup_stamina_start
-            result.stamina_used = 0
+            result.fill_stamina_left_from_start()
+            if result.stamina_start is not None:
+                result.stamina_used = 0
             logger.info(f"MY-OK-WW: Skipping run because {reason}")
 
             if condition:
@@ -142,7 +136,6 @@ def run() -> tuple[RunResult, SheetRunConfig]:
     sheet_client.update_stamina_from_run(result)
     sheet_client.append_run_result(result)
     _send_stamina_report(result, sheet_config)
-
     return result, sheet_config
 
 

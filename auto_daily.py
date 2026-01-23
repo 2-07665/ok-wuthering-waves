@@ -10,11 +10,12 @@ from custom.ok_wrap import (
     request_shutdown,
     read_live_stamina
 )
-from custom.waves_api import WavesDailyClient, read_api_daily_info
+from custom.waves_api import WavesDailyClient, read_api_daily_info, is_api_success
 from custom.time_utils import now
 from custom.env_vars import env_bool
 from custom.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
 from custom.email_sender import send_daily_run_report
+
 from src.task.DailyTask import DailyTask
 
 
@@ -22,14 +23,6 @@ RUN_MODE = "daily"
 
 WAVES_API_ENABLED_ENV = "WAVES_API_ENABLED"
 EMAIL_REPORT_ENABLED_ENV = "EMAIL_REPORT_ENABLED"
-
-
-def _api_success(resp: dict | None) -> bool:
-    if not isinstance(resp, dict):
-        return False
-    if resp.get("success") is True:
-        return True
-    return resp.get("code") in (0, 200, 1511)
 
 
 def _send_daily_report(result: RunResult, sheet_config: SheetRunConfig) -> None:
@@ -64,20 +57,13 @@ def run() -> tuple[RunResult, SheetRunConfig]:
     stamina = backup_stamina = daily_points = None
     if env_bool(WAVES_API_ENABLED_ENV, default=False):
         client = WavesDailyClient()
-        try:
-            try:
-                sign_in_resp = client.sign_in()
-                result.sign_in_success = _api_success(sign_in_resp)
-            except Exception:
-                result.sign_in_success = False
-            stamina, backup_stamina, daily_points = read_api_daily_info(client=client)
-        finally:
-            client.close()
+        sign_in_resp = client.sign_in()
+        result.sign_in_success = is_api_success(sign_in_resp)
+        stamina, backup_stamina, daily_points = read_api_daily_info(client=client)
+        client.close()
 
-    result.stamina_start = stamina
-    result.backup_stamina_start = backup_stamina
-    result.stamina_left = stamina
-    result.backup_stamina_left = backup_stamina
+    result.fill_stamina_start(stamina, backup_stamina)
+    result.fill_stamina_left_from_start()
     result.daily_points = daily_points
 
     if sheet_config.skip_daily_once or (not sheet_config.run_daily):
@@ -116,20 +102,18 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         apply_daily_config(sheet_config, daily_task)
 
         stamina, backup_stamina = read_live_stamina(daily_task)
-        result.stamina_start = stamina
-        result.backup_stamina_start = backup_stamina
+        result.fill_stamina_start(stamina, backup_stamina)
 
-        run_onetime_task(ok.task_executor, daily_task, timeout = 1200)
+        run_onetime_task(ok.task_executor, daily_task, timeout = 1800)
 
-        result.daily_points = daily_task.info_get('total daily points', 0)
-        if result.daily_points >= 100:
+        result.daily_points = daily_task.info_get("total daily points", 0)
+        if result.daily_points is not None and result.daily_points >= 100:
             result.status = "success"
         else:
             result.status = "needs review"
 
         stamina, backup_stamina = read_live_stamina(daily_task)
-        result.stamina_left = stamina
-        result.backup_stamina_left = backup_stamina
+        result.fill_stamina_left(stamina, backup_stamina)
         result.fill_stamina_used()
         result.ended_at = now()
     except Exception as exc:
@@ -145,7 +129,6 @@ def run() -> tuple[RunResult, SheetRunConfig]:
     sheet_client.update_stamina_from_run(result)
     sheet_client.append_run_result(result)
     _send_daily_report(result, sheet_config)
-    
     return result, sheet_config
 
 

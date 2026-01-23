@@ -107,6 +107,18 @@ class RunResult:
             return (basic_entry + stamina_entry + future_stamina + info_entry)
         raise ValueError(f"Unsupported sheet '{sheet}' for result row.")
     
+    def fill_stamina_start(self, stamina: int | None, backup_stamina: int | None) -> None:
+        self.stamina_start = stamina
+        self.backup_stamina_start = backup_stamina
+
+    def fill_stamina_left(self, stamina: int | None, backup_stamina: int | None) -> None:
+        self.stamina_left = stamina
+        self.backup_stamina_left = backup_stamina
+
+    def fill_stamina_left_from_start(self) -> None:
+        self.stamina_left = self.stamina_start
+        self.backup_stamina_left = self.backup_stamina_start
+
     def fill_stamina_used(self) -> None:
         """Calculate and fill stamina_used from start/left totals."""
         if (None in (self.stamina_start, self.backup_stamina_start, self.stamina_left, self.backup_stamina_left)):
