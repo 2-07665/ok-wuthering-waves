@@ -1,6 +1,6 @@
 import json
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import requests
@@ -86,7 +86,8 @@ def _parse_response(resp: requests.Response) -> dict[str, Any]:
 
 
 def _beijing_now() -> datetime:
-    return datetime.utcnow() + timedelta(hours=8)
+    beijing_tz = timezone(timedelta(hours=8))
+    return datetime.now(timezone.utc).astimezone(beijing_tz)
 
 
 class WavesDailyClient:

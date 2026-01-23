@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 
 # Assume .env lives in the project root (one level up from this file)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-ENV_PATH = PROJECT_ROOT / ".env"
+ENV_FILE_ENV = "ENV_FILE"
+DEFAULT_ENV_PATH = PROJECT_ROOT / ".env"
 
 _DOTENV_LOADED = False
 
@@ -15,7 +16,14 @@ def _ensure_dotenv_loaded() -> None:
     global _DOTENV_LOADED
     if _DOTENV_LOADED:
         return
-    load_dotenv(dotenv_path=ENV_PATH)
+    env_file = os.getenv(ENV_FILE_ENV)
+    if env_file:
+        env_path = Path(env_file)
+        if not env_path.is_absolute():
+            env_path = PROJECT_ROOT / env_path
+    else:
+        env_path = DEFAULT_ENV_PATH
+    load_dotenv(dotenv_path=env_path)
     _DOTENV_LOADED = True
 
 
