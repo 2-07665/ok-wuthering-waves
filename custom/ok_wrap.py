@@ -1,7 +1,8 @@
 from config import config
 import importlib
 
-from ok import OK, Logger, execute, og
+from ok import OK, Logger, og
+from ok.util.process import execute
 logger = Logger.get_logger(__name__)
 import custom.log_filter
 
