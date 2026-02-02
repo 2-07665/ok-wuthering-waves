@@ -53,10 +53,19 @@ class SheetRunConfig:
     exit_game_after_stamina: bool = False
     shutdown_after_stamina: bool = False
     
+    which_to_farm: str = "无音区"
+
     tacet_serial: int = 1
     tacet_name: str = ""
     tacet_set1: str = ""
     tacet_set2: str = ""
+
+    forgery_serial: int = 1
+    forgery_name: str = ""
+    forgery_weapon_type: str = ""
+    forgery_version: str = ""
+
+    simulation_material: str = "贝币"
 
 
 @dataclass
@@ -208,15 +217,21 @@ class GoogleSheetClient:
             skip_daily_once = self._get_bool(rows[9][1]),
             exit_game_after_daily = self._get_bool(rows[10][1]),
             shutdown_after_daily = self._get_bool(rows[11][1]),
-            run_nightmare = self._get_bool(rows[14][1]),
+            run_nightmare = self._get_bool(rows[18][1]),
             run_stamina = self._get_bool(rows[8][3]),
             skip_stamina_once = self._get_bool(rows[9][3]),
             exit_game_after_stamina = self._get_bool(rows[10][3]),
             shutdown_after_stamina = self._get_bool(rows[11][3]),
-            tacet_serial = int(rows[12][3]),
-            tacet_name = rows[12][1],
-            tacet_set1 = rows[13][1],
-            tacet_set2 = rows[13][3],
+            which_to_farm = rows[12][1],
+            tacet_serial = int(rows[13][3]),
+            tacet_name = rows[13][1],
+            tacet_set1 = rows[14][1],
+            tacet_set2 = rows[14][3],
+            forgery_serial = int(rows[15][3]),
+            forgery_name = rows[15][1],
+            forgery_weapon_type = rows[16][1],
+            forgery_version = rows[16][3],
+            simulation_material = rows[17][1],
         )
     
     def handle_skip_once(self, task_type: str) -> None:

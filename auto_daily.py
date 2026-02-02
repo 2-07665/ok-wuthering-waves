@@ -33,12 +33,38 @@ def _send_daily_report(result: RunResult, sheet_config: SheetRunConfig) -> None:
 
 
 def apply_daily_config(sheet_config: SheetRunConfig, daily_task: DailyTask) -> None:
-    daily_task.config["Which to Farm"] = daily_task.support_tasks[0]
+    which_to_farm_map: dict[str, int] = {
+        "无音区": 0,
+        "凝素领域": 1,
+        "模拟领域": 2,
+    }
+    selected_idx = which_to_farm_map.get(sheet_config.which_to_farm.strip())
+    if selected_idx is None:
+        logger.warning(
+            f"MY-OK-WW: Unknown which_to_farm='{sheet_config.which_to_farm}', defaulting to '无音区'"
+        )
+        selected_idx = 0
+
+    daily_task.config["Which to Farm"] = daily_task.support_tasks[selected_idx]
     daily_task.config["Which Tacet Suppression to Farm"] = sheet_config.tacet_serial
+    daily_task.config["Which Forgery Challenge to Farm"] = sheet_config.forgery_serial
+
+    simulation_material_map: dict[str, str] = {
+        "共鸣者经验": "Resonator EXP",
+        "武器经验": "Weapon EXP",
+        "贝币": "Shell Credit",
+    }
+    material = simulation_material_map.get(sheet_config.simulation_material.strip(), "Shell Credit")
+    daily_task.config["Material Selection"] = material
     daily_task.config["Auto Farm all Nightmare Nest"] = sheet_config.run_nightmare
+    daily_task.config["Farm Nightmare Nest for Daily Echo"] = True
     logger.info(
         f"MY-OK_WW: Loaded daily config: run_daily={sheet_config.run_daily}, "
-        f"tacet #{sheet_config.tacet_serial}, nightmare={sheet_config.run_nightmare}"
+        f"which_to_farm={sheet_config.which_to_farm}->{daily_task.support_tasks[selected_idx]}, "
+        f"tacet #{sheet_config.tacet_serial}, "
+        f"forgery #{sheet_config.forgery_serial}, "
+        f"material={material}, "
+        f"nightmare={sheet_config.run_nightmare}"
     )
 
 
