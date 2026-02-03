@@ -21,7 +21,7 @@ char_config_option = ConfigOption('Character Config', {
 }, description='Character Config')
 
 pick_echo_config_option = ConfigOption('Pick Echo Config', {
-    'Use OCR': False
+    'Use OCR': True
 }, config_description={
     'Use OCR': 'Turn on if your CPU is Powerful for more accuracy'}, description='Turn on to enable auto pick echo')
 
@@ -47,7 +47,6 @@ config = {
     },
     'my_app': ['src.globals', 'Globals'],
     'start_timeout': 120,  # default 60
-    'login_timeout': 180, # my
     'wait_until_settle_time': 0,
     # required if using feature detection
     'template_matching': {
