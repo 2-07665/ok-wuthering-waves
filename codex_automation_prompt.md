@@ -31,7 +31,7 @@ git merge --ff-only upstream/master
 ```
 
 * If `--ff-only` fails: open an inbox item explaining that `master` diverged from `upstream/master` and stop (do not force-reset).
-* If `master` is already up to date: stop at this step.
+* If `master` is already up to date. Stop and archive.
 
 ### (4) Update origin/master
 
