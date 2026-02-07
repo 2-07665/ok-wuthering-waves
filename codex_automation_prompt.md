@@ -72,9 +72,12 @@ Run:
 ```
 
 git switch my
+git pull --ff-only origin my
 git merge master
 
 ```
+
+* If `git pull --ff-only origin my` fails: open an inbox item explaining that local `my` diverged from `origin/my` and stop.
 
 ### (7) If merge reports conflicts
 Collect conflicted files via:
