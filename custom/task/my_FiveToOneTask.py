@@ -23,29 +23,32 @@ class FiveToOneTask(BaseWWTask):
     def run(self):
         self.log_info("开始五合一任务")
         self.info_set("Merge Count", 0)
+        self.enter_batch_merge()
+        self.loop_merge()
+        self.ensure_main(esc=True, time_out=60)
+        self.log_info("五合一完成!")
+
+    def enter_batch_merge(self):
         self.ensure_main(esc=True, time_out=60)
         self.log_info("在主页")
         self.open_esc_menu()
         self.sleep(1.0)
-        ocr_result = self.wait_click_ocr(*get_ui_box("ESC菜单数据坞"), match="数据坞", time_out=30, raise_if_not_found=True, settle_time=0.2, after_sleep=1.0)
-        if ocr_result is None:
-            self.screenshot(name="未找到ESC菜单数据坞")
+        self.wait_click_ocr(*get_ui_box("ESC菜单数据坞"), match="数据坞", time_out=30, raise_if_not_found=True, settle_time=0.2, after_sleep=1.0)
         self.wait_ocr(*get_ui_box("数据坞左上角判断"), match="数据坞", time_out=30, raise_if_not_found=True, settle_time=0.2)
         self.click_relative(0.04, 0.56, after_sleep=1.0)
-        self.loop_merge()
-        self.ensure_main(esc=True, time_out=30)
-        self.log_info("五合一完成!")
+        self.sleep(1.0)
+        self.wait_click_ocr(*get_ui_box("数据坞标准融合入口"), match="标准融合", time_out=30, raise_if_not_found=True, settle_time=0.2)
 
     def loop_merge(self):
         """
         Enter batch merge, select all, consume merges until no merges remain.
         """
         while True:
-            if not self.wait_click_ocr(*get_ui_box("数据坞批量融合入口"), match="批量融合", time_out=20, raise_if_not_found=False, settle_time=0.2, after_sleep=1.0):
-                self.log_info("MY-OK-WW: 未找到批量融合入口，结束任务")
+            if not self.wait_click_ocr(*get_ui_box("数据坞开始标准融合"), match="标准融合", time_out=20, raise_if_not_found=False, settle_time=0.2, after_sleep=0.5):
+                self.log_info("MY-OK-WW: 未找到标准融合入口，结束任务")
                 return
 
-            if not self.wait_click_ocr(*get_ui_box("数据坞批量融合全选"), match="全选", time_out=20, raise_if_not_found=False, settle_time=0.2, after_sleep=1.0):
+            if not self.wait_click_ocr(*get_ui_box("数据坞标准融合全选"), match="全选", time_out=20, raise_if_not_found=False, settle_time=0.2, after_sleep=0.5):
                 self.log_info("MY-OK-WW: 未找到全选按钮，结束任务")
                 return
 
@@ -58,13 +61,14 @@ class FiveToOneTask(BaseWWTask):
                 self.log_info("MY-OK-WW: 未锁定声骸已耗尽，结束任务")
                 return
 
-            if not self.wait_click_ocr(*get_ui_box("数据坞批量融合按钮"), match="批量融合", time_out=20, raise_if_not_found=False, settle_time=0.2, after_sleep=1.0):
-                self.log_info("MY-OK-WW: 未找到批量融合按钮，结束任务")
+            if not self.wait_click_ocr(*get_ui_box("数据坞标准融合按钮"), match="标准融合", time_out=20, raise_if_not_found=False, settle_time=0.2, after_sleep=1.0):
+                self.log_info("MY-OK-WW: 未找到标准融合按钮，结束任务")
                 return
 
-            self.wait_click_ocr(*get_ui_box("数据坞批量融合确认按钮"), match="确认", time_out=20, raise_if_not_found=False, settle_time=0.2, after_sleep=1.0)
-            self.wait_ocr(*get_ui_box("数据坞批量融合获得声骸"), match="获得声骸", time_out=20, raise_if_not_found=False, settle_time=1.0)
+            self.wait_click_ocr(*get_ui_box("数据坞标准融合确认按钮"), match="确认", time_out=20, raise_if_not_found=False, settle_time=0.2, after_sleep=1.0)
+            self.wait_ocr(*get_ui_box("数据坞标准融合获得声骸"), match="获得声骸", time_out=20, raise_if_not_found=False, settle_time=0.2)
             self.info_incr("Merge Count", merge_count)
+            self.sleep(0.5)
             self.click_relative(0.5, 0.05, after_sleep=1.0)
 
     def _read_merge_count(self):
