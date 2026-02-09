@@ -90,6 +90,8 @@ config = {
         ["custom.task.my_FiveToOneTask", "FiveToOneTask"],
         ["src.task.DailyTask", "DailyTask"],
         ["src.task.TacetTask", "TacetTask"],
+        ["src.task.ForgeryTask", "ForgeryTask"],
+        ["src.task.SimulationTask", "SimulationTask"],
         ["src.task.NightmareNestTask", "NightmareNestTask"],
     ], 
     'trigger_tasks': [
