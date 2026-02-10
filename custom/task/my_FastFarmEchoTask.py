@@ -89,12 +89,15 @@ class FastFarmEchoTask(BaseCombatTask):
         """
         pass
 
-    def sleep_check_combat(self, timeout, check_combat=True):
+    def sleep_check(self):
         """
-        Disable combat guard during skill waits so HP-bar flicker or a kill at the
-        end of an animation can't break the loop.
+        Upstream v3.0.19 renamed sleep guard hook from sleep_check_combat(...) to
+        sleep_check(). Keep combat-state refresh, but do not raise on expected
+        out-of-combat transitions during boss respawn windows.
         """
-        self.sleep(timeout)
+        if self._in_combat:
+            self.next_frame()
+            self.in_combat()
 
     def load_chars(self):
         """
