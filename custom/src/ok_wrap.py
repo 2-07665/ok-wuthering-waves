@@ -220,7 +220,7 @@ def read_live_stamina(
             task.ensure_main(esc=True, time_out=20)
 
         if attempt < retries:
-            task.sleep(retry_sleep)
+            time.sleep(retry_sleep)
 
     if last_exc is not None:
         logger.error("MY-OK-WW: 读取体力失败，已超过最大重试次数", last_exc)
@@ -239,7 +239,7 @@ def read_echo_number(task: BaseWWTask, *, retries: int = 3, retry_sleep: float =
             task.ensure_main(esc=True, time_out=20)
             logger.info("MY-OK-WW: 按B打开背包")
             task.send_key('b')
-            task.sleep(3)
+            time.sleep(3)
             task.click_relative(0.04, 0.3)
 
             echo_number_box = task.wait_ocr(
@@ -262,7 +262,7 @@ def read_echo_number(task: BaseWWTask, *, retries: int = 3, retry_sleep: float =
             task.ensure_main(esc=True, time_out=10)
 
         if attempt < retries:
-            task.sleep(retry_sleep)
+            time.sleep(retry_sleep)
 
     if last_exc is not None:
         logger.error("MY-OK-WW: 读取声骸数量失败，已超过最大重试次数", last_exc)
