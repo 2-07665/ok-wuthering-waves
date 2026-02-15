@@ -32,7 +32,7 @@ class FiveToOneTask(BaseWWTask):
                 self.enter_batch_merge()
                 self.loop_merge()
             except Exception as exc:
-                logger.warning("MY-OK-WW: Merge task attempt failed", exc)
+                logger.error("MY-OK-WW: Merge task attempt failed", exc)
             finally:
                 self.ensure_main(esc=True, time_out=60)
 
