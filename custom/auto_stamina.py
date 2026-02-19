@@ -44,7 +44,7 @@ def which_to_farm_index(sheet_config: SheetRunConfig) -> int:
         index = 0
     return index
 
-def apply_stamina_config(sheet_config: SheetRunConfig, task: StaminaTask, burn: int) -> None:
+def apply_stamina_config(sheet_config: SheetRunConfig, task: StaminaTask) -> None:
     selected_idx = which_to_farm_index(sheet_config)
 
     task.config["Which to Farm"] = task.support_tasks[selected_idx]
@@ -58,15 +58,12 @@ def apply_stamina_config(sheet_config: SheetRunConfig, task: StaminaTask, burn: 
     material = simulation_material_map.get(sheet_config.simulation_material.strip(), "Shell Credit")
     task.config["Material Selection"] = material
 
-    task.config["Burn amount"] = burn
-
     logger.info(
         f"MY-OK_WW: Loaded stamina config: run_stamina={sheet_config.run_stamina}, "
         f"which_to_farm={sheet_config.which_to_farm}->{task.support_tasks[selected_idx]}, "
         f"tacet #{sheet_config.tacet_serial}, "
         f"forgery #{sheet_config.forgery_serial}, "
-        f"material={material}, "
-        f"burn stamina={burn}"
+        f"material={material}. "
     )
 
 
@@ -136,7 +133,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
             if stamina is not None:
                 result.fill_stamina_start(stamina, backup_stamina)
 
-            apply_stamina_config(sheet_config, stamina_task, burn)
+            apply_stamina_config(sheet_config, stamina_task)
             run_onetime_task(ok.task_executor, stamina_task, timeout = 600)
             
             stamina, backup_stamina = read_live_stamina(stamina_task)

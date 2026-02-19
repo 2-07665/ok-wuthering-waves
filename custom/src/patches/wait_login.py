@@ -1,10 +1,7 @@
 import re
 from functools import wraps
 
-from ok import Logger
 from src.task.BaseWWTask import BaseWWTask
-
-logger = Logger.get_logger(__name__)
 
 
 def patch_basewwtask_wait_login_disable_restart() -> None:

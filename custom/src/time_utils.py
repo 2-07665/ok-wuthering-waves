@@ -112,7 +112,7 @@ def calculate_burn(stamina: int | None,
                    stamina_consume_unit: int = TACETFARM_STAMINA_UNIT,
                    daily_hour: int = DAILY_HOUR, 
                    daily_minute: int = DAILY_MINUTE) -> tuple[bool, int, bool, str]:
-    """Return (should_run, burn_amount, good?, reason)."""
+    """Return (should run?, burn amount, good?, reason)."""
     if stamina is None:
         return False, 0, False, "无法读取体力，不执行任务"
 
@@ -132,11 +132,14 @@ def calculate_burn(stamina: int | None,
     burn_needed = (burn_needed + stamina_consume_unit - 1) // stamina_consume_unit * stamina_consume_unit
     available_stamina = stamina // stamina_consume_unit * stamina_consume_unit
 
-    if burn_needed <= available_stamina:
+    if available_stamina >= burn_needed + stamina_consume_unit:
+        return True, available_stamina, False, f"下次日常时会溢出 {stamina_overflow} 体力，过量消耗 {available_stamina}"
+
+    if available_stamina >= burn_needed:
         return True, burn_needed, True, f"下次日常时会溢出 {stamina_overflow} 体力，消耗 {burn_needed}"
+
+    if available_stamina == 0:
+        return False, 0, False, f"下次日常时会溢出 {stamina_overflow} 体力，但当前可消耗不足一次任务"
     else:
-        if available_stamina == 0:
-            return False, 0, False, f"下次日常时会溢出 {stamina_overflow} 体力，但当前可消耗不足一次任务"
-        else:
-            return True, available_stamina, False, f"下次日常时会溢出 {stamina_overflow} 体力，但当前仅可消耗 {available_stamina}"
+        return True, available_stamina, False, f"下次日常时会溢出 {stamina_overflow} 体力，但当前仅可消耗 {available_stamina}"
 # endregion

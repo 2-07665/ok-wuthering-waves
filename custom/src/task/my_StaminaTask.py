@@ -24,7 +24,6 @@ class StaminaTask(WWOneTimeTask, BaseCombatTask):
             'Which Tacet Suppression to Farm': 1,  # starts with 1
             'Which Forgery Challenge to Farm': 1,  # starts with 1
             'Material Selection': 'Shell Credit',
-            'Burn amount': 60, # amount of stamina to burn
         }
         self.config_description = {
             'Which Tacet Suppression to Farm': 'The Tacet Suppression number in the F2 list.',
@@ -48,21 +47,11 @@ class StaminaTask(WWOneTimeTask, BaseCombatTask):
         WWOneTimeTask.run(self)
         self.ensure_main(time_out=180)
 
-        burn = self.config.get("Burn amount")
-        daily_mode = False if burn >= 180 else True
-        if daily_mode:
-            used_stamina = 180 - burn
-        else:
-            used_stamina = 0
-
         target = self.config.get('Which to Farm', self.support_tasks[0])
 
         if target == self.support_tasks[0]:
-            self.get_task_by_class(TacetTask).farm_tacet(daily=daily_mode, used_stamina=used_stamina,
-                                                                 config=self.config)
+            self.get_task_by_class(TacetTask).farm_tacet(config=self.config)
         elif target == self.support_tasks[1]:
-            self.get_task_by_class(ForgeryTask).farm_forgery(daily=daily_mode, used_stamina=used_stamina,
-                                                                     config=self.config)
+            self.get_task_by_class(ForgeryTask).farm_forgery(config=self.config)
         else:
-            self.get_task_by_class(SimulationTask).farm_simulation(daily=daily_mode, used_stamina=used_stamina,
-                                                                           config=self.config)
+            self.get_task_by_class(SimulationTask).farm_simulation(config=self.config)
