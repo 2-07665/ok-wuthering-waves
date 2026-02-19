@@ -1,6 +1,3 @@
-# Patches on top of upstream ok-ww
-
-
 # Codes managed by AI
 
 - **Log filter**: `custom/src/log_filter`
