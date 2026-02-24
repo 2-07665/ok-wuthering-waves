@@ -99,26 +99,61 @@ class RunResult:
     decision: str | None = None
     error: str | None = None
 
-    def as_row(self, sheet: str) -> list[str]:
-        """Convert to a flat row for Sheets."""
-        names = sheet_names()
+    @dataclass(frozen=True)
+    class Derived:
+        end_time: dt.datetime
+        started_at_text: str
+        ended_at_text: str
+        duration_seconds: int
+        duration_text: str
+        next_daily_stamina: str
+        next_daily_backup_stamina: str
+        decision: str
+        error: str
+
+        @property
+        def notes_visible(self) -> bool:
+            return bool(self.decision or self.error)
+
+    def ensure_ended_at(self) -> dt.datetime:
         if self.ended_at is None:
-            end = now()
-        else:
-            end = self.ended_at
-        total_seconds = max(0, int(round((end - self.started_at).total_seconds())))
+            self.ended_at = now()
+        return self.ended_at
+
+    def derive(self, *, end_time: dt.datetime | None = None) -> Derived:
+        resolved_end = end_time if end_time is not None else (self.ended_at or now())
+        duration_seconds = max(0, int(round((resolved_end - self.started_at).total_seconds())))
+
         if self.stamina_left is not None and self.backup_stamina_left is not None:
             next_daily_stamina, next_daily_backup_stamina = predict_future_stamina(
-                self.stamina_left, 
-                self.backup_stamina_left, 
-                minutes_until_target_time(DAILY_HOUR, DAILY_MINUTE, end))
-            future_stamina = safe_str_list([next_daily_stamina, next_daily_backup_stamina])
+                self.stamina_left,
+                self.backup_stamina_left,
+                minutes_until_target_time(DAILY_HOUR, DAILY_MINUTE, resolved_end),
+            )
         else:
-            future_stamina = ["", ""]
+            next_daily_stamina, next_daily_backup_stamina = "", ""
 
-        basic_entry = [format_timestamp(self.started_at), format_timestamp(end), format_duration(total_seconds), self.status]
+        return RunResult.Derived(
+            end_time=resolved_end,
+            started_at_text=format_timestamp(self.started_at),
+            ended_at_text=format_timestamp(resolved_end),
+            duration_seconds=duration_seconds,
+            duration_text=format_duration(duration_seconds),
+            next_daily_stamina=safe_str(next_daily_stamina),
+            next_daily_backup_stamina=safe_str(next_daily_backup_stamina),
+            decision=safe_str(self.decision),
+            error=safe_str(self.error),
+        )
+
+    def as_row(self, sheet: str, *, derived: Derived | None = None) -> list[str]:
+        """Convert to a flat row for Sheets."""
+        names = sheet_names()
+        resolved = derived or self.derive()
+        future_stamina = [resolved.next_daily_stamina, resolved.next_daily_backup_stamina]
+
+        basic_entry = [resolved.started_at_text, resolved.ended_at_text, resolved.duration_text, self.status]
         stamina_entry = safe_str_list([self.stamina_start, self.backup_stamina_start, self.stamina_used, self.stamina_left, self.backup_stamina_left])
-        info_entry = safe_str_list([self.decision, self.error])
+        info_entry = [resolved.decision, resolved.error]
         if sheet == names["DAILY_RUNS"]:
             sign_in_entry = [success_label(self.sign_in_success)]
             nest_entry = [bool_label(self.run_nightmare)]
@@ -277,10 +312,10 @@ class GoogleSheetClient:
             return names["STAMINA_RUNS"]
         raise ValueError(f"Unsupported task type: {task_type}")
 
-    def append_run_result(self, result: RunResult) -> None:
+    def append_run_result(self, result: RunResult, *, derived: RunResult.Derived | None = None) -> None:
         sheet = self._sheet_name_for_result(result.task_type)
         ws = self.spreadsheet.worksheet(sheet)
-        ws.append_row(result.as_row(sheet), value_input_option = gspread.utils.ValueInputOption.user_entered)
+        ws.append_row(result.as_row(sheet, derived=derived), value_input_option = gspread.utils.ValueInputOption.user_entered)
 
     def append_fast_farm_result(self, result: FastFarmResult) -> None:
         ws = self.spreadsheet.worksheet(sheet_names()["FAST_FARM_RUNS"])

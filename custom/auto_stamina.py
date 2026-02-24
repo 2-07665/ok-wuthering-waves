@@ -19,7 +19,7 @@ from custom.src.waves_api import read_api_daily_info
 from custom.src.time_utils import now, calculate_burn
 from custom.src.env_vars import env_bool
 from custom.src.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
-from custom.src.email_sender import send_stamina_run_report
+from custom.src.notice import send_stamina_run_report
 
 from custom.src.task.my_StaminaTask import StaminaTask
 
@@ -27,7 +27,7 @@ from custom.src.task.my_StaminaTask import StaminaTask
 RUN_MODE = "stamina"
 
 WAVES_API_ENABLED_ENV = "WAVES_API_ENABLED"
-EMAIL_REPORT_ENABLED_ENV = "EMAIL_REPORT_ENABLED"
+NOTICE_ENABLED_ENV = "NOTICE_ENABLED"
 
 
 def which_to_farm_index(sheet_config: SheetRunConfig) -> int:
@@ -67,11 +67,28 @@ def apply_stamina_config(sheet_config: SheetRunConfig, task: StaminaTask) -> Non
     )
 
 
-def _send_stamina_report(result: RunResult, sheet_config: SheetRunConfig) -> None:
-    if env_bool(EMAIL_REPORT_ENABLED_ENV, default=True):
-        send_stamina_run_report(result, sheet_config)
+def _send_stamina_report(
+    result: RunResult,
+    sheet_config: SheetRunConfig,
+    *,
+    derived: RunResult.Derived | None = None,
+) -> None:
+    if env_bool(NOTICE_ENABLED_ENV, default=False):
+        send_stamina_run_report(result, sheet_config, derived=derived)
         return
-    logger.info(f"MY-OK-WW: Stamina email report disabled via {EMAIL_REPORT_ENABLED_ENV}")
+    logger.info(f"MY-OK-WW: Stamina task notice disabled via {NOTICE_ENABLED_ENV}")
+
+
+def _persist_and_report(
+    sheet_client: GoogleSheetClient,
+    result: RunResult,
+    sheet_config: SheetRunConfig,
+) -> None:
+    end_time = result.ensure_ended_at()
+    derived = result.derive(end_time=end_time)
+    sheet_client.update_stamina_from_run(result)
+    sheet_client.append_run_result(result, derived=derived)
+    _send_stamina_report(result, sheet_config, derived=derived)
 
 
 def run() -> tuple[RunResult, SheetRunConfig]:
@@ -105,9 +122,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
             if sheet_config.skip_stamina_once:
                 sheet_client.handle_skip_once(RUN_MODE)
 
-            sheet_client.update_stamina_from_run(result)
-            sheet_client.append_run_result(result)
-            _send_stamina_report(result, sheet_config)
+            _persist_and_report(sheet_client, result, sheet_config)
             return result, sheet_config
 
         if stamina is None:
@@ -168,9 +183,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
                 ok.device_manager.stop_hwnd()
             ok.quit()
 
-    sheet_client.update_stamina_from_run(result)
-    sheet_client.append_run_result(result)
-    _send_stamina_report(result, sheet_config)
+    _persist_and_report(sheet_client, result, sheet_config)
     return result, sheet_config
 
 

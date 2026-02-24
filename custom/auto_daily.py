@@ -19,7 +19,7 @@ from custom.src.waves_api import WavesDailyClient, read_api_daily_info, is_api_s
 from custom.src.time_utils import now
 from custom.src.env_vars import env_bool
 from custom.src.gsheet_manager import GoogleSheetClient, RunResult, SheetRunConfig
-from custom.src.email_sender import send_daily_run_report
+from custom.src.notice import send_daily_run_report
 
 from src.task.DailyTask import DailyTask
 
@@ -27,14 +27,31 @@ from src.task.DailyTask import DailyTask
 RUN_MODE = "daily"
 
 WAVES_API_ENABLED_ENV = "WAVES_API_ENABLED"
-EMAIL_REPORT_ENABLED_ENV = "EMAIL_REPORT_ENABLED"
+NOTICE_ENABLED_ENV = "NOTICE_ENABLED"
 
 
-def _send_daily_report(result: RunResult, sheet_config: SheetRunConfig) -> None:
-    if env_bool(EMAIL_REPORT_ENABLED_ENV, default=True):
-        send_daily_run_report(result, sheet_config)
+def _send_daily_report(
+    result: RunResult,
+    sheet_config: SheetRunConfig,
+    *,
+    derived: RunResult.Derived | None = None,
+) -> None:
+    if env_bool(NOTICE_ENABLED_ENV, default=False):
+        send_daily_run_report(result, sheet_config, derived=derived)
         return
-    logger.info(f"MY-OK-WW: Daily email report disabled via {EMAIL_REPORT_ENABLED_ENV}")
+    logger.info(f"MY-OK-WW: Daily task notice disabled via {NOTICE_ENABLED_ENV}")
+
+
+def _persist_and_report(
+    sheet_client: GoogleSheetClient,
+    result: RunResult,
+    sheet_config: SheetRunConfig,
+) -> None:
+    end_time = result.ensure_ended_at()
+    derived = result.derive(end_time=end_time)
+    sheet_client.update_stamina_from_run(result)
+    sheet_client.append_run_result(result, derived=derived)
+    _send_daily_report(result, sheet_config, derived=derived)
 
 
 def apply_daily_config(sheet_config: SheetRunConfig, daily_task: DailyTask) -> None:
@@ -108,9 +125,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         if sheet_config.skip_daily_once:
             sheet_client.handle_skip_once(RUN_MODE)
 
-        sheet_client.update_stamina_from_run(result)
-        sheet_client.append_run_result(result)
-        _send_daily_report(result, sheet_config)
+        _persist_and_report(sheet_client, result, sheet_config)
         return result, sheet_config
 
     if daily_points is not None and daily_points >= 100:
@@ -120,9 +135,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         result.run_nightmare = False
         result.stamina_used = 0
 
-        sheet_client.update_stamina_from_run(result)
-        sheet_client.append_run_result(result)
-        _send_daily_report(result, sheet_config)
+        _persist_and_report(sheet_client, result, sheet_config)
         return result, sheet_config
 
     ok = None
@@ -158,9 +171,7 @@ def run() -> tuple[RunResult, SheetRunConfig]:
                 ok.device_manager.stop_hwnd()
             ok.quit()
 
-    sheet_client.update_stamina_from_run(result)
-    sheet_client.append_run_result(result)
-    _send_daily_report(result, sheet_config)
+    _persist_and_report(sheet_client, result, sheet_config)
     return result, sheet_config
 
 

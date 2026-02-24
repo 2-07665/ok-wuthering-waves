@@ -122,12 +122,12 @@
   <div class="container">
     <!-- Header: run mode only appears in {{title}} -->
     <div class="header">
-      <h1 class="status">{{title}}</h1>
+      <h1 class="status" style="color: {{status_color}};">{{title}}</h1>
     </div>
 
     <!-- 执行概览 -->
     <div class="card">
-      <div class="section-title">执行概览</div>
+      <div class="section-title" style="color: #6b7280;">执行概览</div>
       <table class="metric-table" role="presentation">
         <tr>
           <td class="metric-cell">
@@ -148,7 +148,7 @@
 
     <!-- 体力 -->
     <div class="card">
-      <div class="section-title">体力</div>
+      <div class="section-title" style="color: #6b7280;">体力</div>
       <table class="metric-table" role="presentation">
         <tr>
           <td class="metric-cell">
@@ -178,7 +178,7 @@
 
     <!-- 配置快照 -->
     <div class="card">
-      <div class="section-title">配置快照</div>
+      <div class="section-title" style="color: #6b7280;">配置快照</div>
       <table class="metric-table" role="presentation">
         <tr>
           <td class="metric-cell" colspan="3">
@@ -188,12 +188,18 @@
         </tr>
         <tr>
           <td class="metric-cell">
-            <span class="label">无音区</span>
-            <span class="value">{{tacet_name}}</span>
+            <span class="label">刷什么</span>
+            <span class="value">{{which_to_farm}}</span>
           </td>
           <td class="metric-cell">
-            <span class="label">套装</span>
-            <span class="value">{{tacet_set1}} / {{tacet_set2}}</span>
+            <span class="label">{{farm_detail1_label}}</span>
+            <span class="value">{{farm_detail1_value}}</span>
+          </td>
+        </tr>
+        <tr style="display: {{farm_detail2_row_display}};">
+          <td class="metric-cell" colspan="3">
+            <span class="label">{{farm_detail2_label}}</span>
+            <span class="value">{{farm_detail2_value}}</span>
           </td>
         </tr>
       </table>
@@ -201,7 +207,7 @@
 
     <!-- 备注 -->
     <div class="card" style="display: {{notes_display}};">
-      <div class="section-title">备注</div>
+      <div class="section-title" style="color: #6b7280;">备注</div>
       <table class="metric-table" role="presentation">
         <tr style="display: {{decision_display}};">
           <td class="metric-cell">

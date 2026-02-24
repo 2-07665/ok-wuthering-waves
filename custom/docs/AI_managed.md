@@ -4,6 +4,6 @@
 
 - **Official API**: `custom/src/waves_api` adapted from WutheringWavesUID
 
-- **Email**: `custom/src/email_sender` send run results via mailgun api
+- **Notice**: `custom/src/notice` send run results via mailgun/wxpusher
 
 - **Fast farm 4C task**: `custom/src/task/my_FastFarmEchoTask`
