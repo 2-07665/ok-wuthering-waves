@@ -7,11 +7,7 @@ from src.task.BaseCombatTask import BaseCombatTask
 
 
 class FastFarmEchoTask(BaseCombatTask):
-    """
-    Minimal fixed-position non-realm boss farm:
-    - No character switching or post-fight movement
-    - Echo pickup is just pressing the interact key after each kill
-    """
+    """Fixed-position fast boss farm with single-character combat."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -21,10 +17,8 @@ class FastFarmEchoTask(BaseCombatTask):
         self.group_icon = FluentIcon.SYNC
         self.icon = FluentIcon.ALBUM
         self.default_config = {"Repeat Farm Count": 2000}
-        # Exit combat once the boss health bar disappears.
-        self.combat_end_condition = self._combat_over
-        self._chars_initialized = False
-
+        self.combat_grace_window = 0.8
+        self.last_combat_check = 0
         self.use_liberation = False
 
     def run(self):
@@ -44,73 +38,49 @@ class FastFarmEchoTask(BaseCombatTask):
         self.info_set("Fight Count", farm_target)
 
     def _pickup_echo(self):
-        for _ in range(3):
-            self.send_key('f', after_sleep=0.3)
-
+        self.send_key('f', after_sleep=0.3)
+        self.send_key('f', after_sleep=0.3)
 
 # region Combat Overwrite
-    def in_combat(self):
-        """
-        Robust, non-blocking combat detection:
-        - Only rely on health bar visibility (no retarget waits).
-        - Keep a short grace window to avoid flapping when the bar flickers.
-        """
+    def in_combat(self, target=False):
+        """Health-bar-only combat check with short flicker tolerance."""
         now = time.time()
-
         if self.check_health_bar():
             self._in_combat = True
             self.last_combat_check = now
             return True
 
         if self._in_combat:
-            if self.combat_end_condition and self.combat_end_condition():
-                return self.reset_to_false(reason='end condition reached')
-            if now - self.last_combat_check < 0.8:
+            if now - self.last_combat_check < self.combat_grace_window:
                 return True
+            return self.reset_to_false(reason='health bar missing')
         return False
-
-    def target_enemy(self, wait=True):
-        """
-        Skip long retarget waits so actions keep flowing even if the lock briefly drops.
-        """
-        if self.has_target():
-            return True
-        self.middle_click()
-        return True
 
     def switch_next_char(self, current_char, *args, **kwargs):
         return current_char
 
-    def check_combat(self):
-        """
-        Never raise out of combat; keep the loop running to avoid freezes.
-        """
-        pass
-
     def sleep_check(self):
-        """
-        Upstream v3.0.19 renamed sleep guard hook from sleep_check_combat(...) to
-        sleep_check(). Keep combat-state refresh, but do not raise on expected
-        out-of-combat transitions during boss respawn windows.
-        """
+        """Refresh combat state during sleep without raising."""
         if self._in_combat:
             self.next_frame()
             self.in_combat()
 
+    def check_combat(self):
+        """Do not raise during short respawn gaps."""
+        self.in_combat()
+
+    def combat_end(self):
+        """Skip per-character end hooks that can trigger switching."""
+        return
+
     def load_chars(self):
-        """
-        Detect team once and reuse to avoid repeated team-size changes or resets.
-        """
-        if self._chars_initialized and any(self.chars):
-            for char in self.chars:
-                if char:
-                    char.is_current_char = True
-            return True
-
+        """Force single-char logic while keeping upstream slot indexing safe."""
         loaded = super().load_chars()
-        self._chars_initialized = True
-        return loaded
-
-    def _combat_over(self):
-        return not self.check_health_bar()
+        if not loaded:
+            return loaded
+        current = self.get_current_char(raise_exception=False)
+        if current is None:
+            return loaded
+        self.chars = [current] * max(2, len(self.chars))
+        return True
 # endregion
