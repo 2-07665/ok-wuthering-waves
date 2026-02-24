@@ -64,7 +64,7 @@ class FastFarmEchoTask(BaseCombatTask):
 
         if self._in_combat:
             if self.combat_end_condition and self.combat_end_condition():
-                return self.reset_to_false(recheck=False, reason='end condition reached')
+                return self.reset_to_false(reason='end condition reached')
             if now - self.last_combat_check < 0.8:
                 return True
         return False
