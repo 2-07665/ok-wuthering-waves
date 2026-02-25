@@ -5,6 +5,7 @@ CUSTOM_ONETIME_TASKS = (
     ("custom.src.task.my_FastFarmEchoTask", "FastFarmEchoTask"),
     ("custom.src.task.my_FiveToOneTask", "FiveToOneTask"),
     ("custom.src.task.my_StaminaTask", "StaminaTask"),
+    ("custom.src.task.my_EchoOCRTask", "EchoOCRTask"),
 )
 
 
