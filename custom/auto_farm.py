@@ -1,3 +1,4 @@
+import argparse
 import sys
 import traceback
 import time
@@ -35,11 +36,12 @@ def calculate_farm_count(echo_number: int | None) -> int:
         return round((3000 - echo_number) / 0.6)
 
 
-def apply_farm_config(farm_target: int, farm_task: FastFarmEchoTask) -> None:
+def apply_farm_config(farm_target: int, char_id: int, farm_task: FastFarmEchoTask) -> None:
     farm_task.config["刷多少次"] = farm_target
+    farm_task.config["角色"] = char_id
 
 
-def run():
+def run(char_id: int = 1):
     sheet_client = GoogleSheetClient()
 
     logger.info(f"MY-OK-WW: Selected run mode: farm")
@@ -64,8 +66,8 @@ def run():
         try:
             result.echo_number_start = read_echo_number(farm_task)
             farm_target = calculate_farm_count(result.echo_number_start)
-            apply_farm_config(farm_target, farm_task)
-            logger.info(f"MY-OK-WW: 已设置进行 {farm_target} 次战斗")
+            apply_farm_config(farm_target, char_id, farm_task)
+            logger.info(f"MY-OK-WW: 已设置进行 {farm_target} 次战斗, char_id={char_id}")
             run_onetime_task_until_time(ok.task_executor, farm_task, hour=STOP_HOUR, minute=STOP_MINUTE)
             
             result.ended_at = now()
@@ -79,12 +81,13 @@ def run():
             run_onetime_task(ok.task_executor, merge_task)
             result.merge_count = merge_task.info_get("Merge Count", 0)
             result.status = "success"
+            result.info = f"角色={char_id}"
 
             sheet_client.append_fast_farm_result(result)
 
         except Exception as exc:
             result.status = "failure"
-            result.error = "".join(traceback.format_exception_only(type(exc), exc)).strip()
+            result.info = "".join(traceback.format_exception_only(type(exc), exc)).strip()
             logger.error("MY-OK-WW: Automation failed", exc)
 
             sheet_client.append_fast_farm_result(result)
@@ -94,6 +97,19 @@ def run():
     ok.device_manager.stop_hwnd()
     ok.quit()
 
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run fast farm automation.")
+    parser.add_argument(
+        "--char",
+        type=int,
+        default=1,
+        help="Character id passed to FastFarmEchoTask.",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    run()
+    args = parse_args()
+    run(args.char)
     request_shutdown()

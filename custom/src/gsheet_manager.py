@@ -199,7 +199,7 @@ class FastFarmResult:
     echo_number_gained: int | None = None
     merge_count: int | None = None
 
-    error: str | None = ""
+    info: str | None = ""
 
     def as_row(self) -> list[str]:
         """Convert to a flat row for Sheets."""
@@ -217,7 +217,7 @@ class FastFarmResult:
         basic_entry = [format_timestamp(self.started_at), format_timestamp(end), format_duration(total_seconds), self.status]
         fight_entry = safe_str_list([self.fight_count, self.fight_speed])
         echo_entry = safe_str_list([self.echo_number_start, self.echo_number_end, self.echo_number_gained, self.merge_count])
-        info_entry = [safe_str(self.error)]
+        info_entry = [safe_str(self.info)]
 
         return (basic_entry + fight_entry + echo_entry + info_entry)
     
