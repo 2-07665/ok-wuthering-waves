@@ -1,86 +1,87 @@
 import time
-
 from qfluentwidgets import FluentIcon
-from ok import Logger
-logger = Logger.get_logger(__name__)
+
+from ..char.Cartethyia import Cartethyia
+from ..char.Aemeath import Aemeath
 from src.task.BaseCombatTask import BaseCombatTask
 
 
 class FastFarmEchoTask(BaseCombatTask):
-    """Fixed-position fast boss farm with single-character combat."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.description = "单人速刷位置固定的4C Boss"
+        self.description = "单人速刷位置固定的4C"
         self.name = "固定4C速刷"
         self.group_name = "My"
         self.group_icon = FluentIcon.SYNC
         self.icon = FluentIcon.ALBUM
-        self.default_config = {"Repeat Farm Count": 2000}
-        self.combat_grace_window = 0.8
-        self.last_combat_check = 0
-        self.use_liberation = False
+        self.default_config = {"刷多少次": 2000, "角色": 1}
 
+        self.combat_check_grace_window = 1.0
+        self.last_combat_check = 0
+        
     def run(self):
-        farm_target = self.config.get('Repeat Farm Count', 0)
+        farm_target = self.config.get("刷多少次", 0)
+        char_id = self.config.get("角色", 1)
         self.info_set("Fight Count", 0)
 
         self.ensure_main(esc=True, time_out= 60)
-        self.run_until(self.in_combat, 'w', time_out=10, running=True)
+        self.load_fixed_char(char_id)
+        self.run_until(self.simple_in_combat, "w", time_out=10, running=True)
 
         for idx in range(farm_target):
-            self.log_info(f'战斗: {idx + 1}/{farm_target}')
-            self.combat_once(wait_combat_time=300, raise_if_not_found=False)
-            self._pickup_echo()
+            self.log_info(f"战斗: {idx + 1}/{farm_target}")
+            self.my_farm_once()
             self.info_incr("Fight Count", 1)
 
-        logger.info(f"MY-OK-WW: {farm_target} 次战斗已完成")
-        self.info_set("Fight Count", farm_target)
-
-    def _pickup_echo(self):
+    def simple_pickup_echo(self):
         self.send_key('f', after_sleep=0.3)
-        self.send_key('f', after_sleep=0.3)
+        time.sleep(2.4)
 
-# region Combat Overwrite
-    def in_combat(self, target=False):
-        """Health-bar-only combat check with short flicker tolerance."""
+# region Combat
+    def my_farm_once(self):
+        self.wait_until(self.simple_in_combat, time_out=300, raise_if_not_found=False)
+        self._fixed_char.one_shot()
+        while self.simple_in_combat():
+            self._fixed_char.fight()
+
+        self.simple_pickup_echo()
+        self._fixed_char.post_fight()
+
+    def simple_in_combat(self):
         now = time.time()
         if self.check_health_bar():
             self._in_combat = True
             self.last_combat_check = now
             return True
-
         if self._in_combat:
-            if now - self.last_combat_check < self.combat_grace_window:
+            if now - self.last_combat_check < self.combat_check_grace_window:
                 return True
-            return self.reset_to_false(reason='health bar missing')
+        self._in_combat = False
         return False
 
-    def switch_next_char(self, current_char, *args, **kwargs):
-        return current_char
+    def load_fixed_char(self, char_id):
+        self.load_hotkey()
 
-    def sleep_check(self):
-        """Refresh combat state during sleep without raising."""
-        if self._in_combat:
-            self.next_frame()
-            self.in_combat()
-
-    def check_combat(self):
-        """Do not raise during short respawn gaps."""
-        self.in_combat()
-
-    def combat_end(self):
-        """Skip per-character end hooks that can trigger switching."""
-        return
-
-    def load_chars(self):
-        """Force single-char logic while keeping upstream slot indexing safe."""
-        loaded = super().load_chars()
-        if not loaded:
-            return loaded
-        current = self.get_current_char(raise_exception=False)
-        if current is None:
-            return loaded
-        self.chars = [current] * max(2, len(self.chars))
-        return True
+        if char_id == 1:
+            self._fixed_char = Cartethyia(self, 0,
+                    res_cd=14,
+                    echo_cd=25,
+                    liberation_cd=20,
+                    char_name="char_cartethyia",
+                    confidence=1,
+                    ring_index=4,
+                )
+        else:
+            self._fixed_char = Aemeath(self, 0,
+                    res_cd=4,
+                    echo_cd=25,
+                    liberation_cd=25,
+                    char_name="char_aemeath",
+                    confidence=1,
+                    ring_index=2,
+                )
+        c = self._fixed_char
+        c.is_current_char = True
+        self.chars = [c]
 # endregion

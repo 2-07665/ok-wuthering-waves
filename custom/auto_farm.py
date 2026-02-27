@@ -36,7 +36,7 @@ def calculate_farm_count(echo_number: int | None) -> int:
 
 
 def apply_farm_config(farm_target: int, farm_task: FastFarmEchoTask) -> None:
-    farm_task.config["Repeat Farm Count"] = farm_target
+    farm_task.config["刷多少次"] = farm_target
 
 
 def run():
