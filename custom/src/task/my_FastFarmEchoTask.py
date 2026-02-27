@@ -1,12 +1,17 @@
 import time
 from qfluentwidgets import FluentIcon
+from ok import find_color_rectangles
 
 from ..char.Cartethyia import Cartethyia
-from ..char.Aemeath import Aemeath
-from src.task.BaseCombatTask import BaseCombatTask
+from src.task.BaseWWTask import BaseWWTask
 
+boss_health_color = {
+    'r': (245, 255),  # Red range
+    'g': (30, 185),  # Green range
+    'b': (4, 75)  # Blue range
+}
 
-class FastFarmEchoTask(BaseCombatTask):
+class FastFarmEchoTask(BaseWWTask):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -15,18 +20,19 @@ class FastFarmEchoTask(BaseCombatTask):
         self.group_name = "My"
         self.group_icon = FluentIcon.SYNC
         self.icon = FluentIcon.ALBUM
-        self.default_config = {"刷多少次": 2000, "角色": 1}
+        self.default_config = {"刷多少次": 2000}
 
+        self._fixed_char = Cartethyia(self)
+
+        self._in_combat = False
         self.combat_check_grace_window = 1.0
         self.last_combat_check = 0
         
     def run(self):
         farm_target = self.config.get("刷多少次", 0)
-        char_id = self.config.get("角色", 1)
         self.info_set("Fight Count", 0)
 
         self.ensure_main(esc=True, time_out= 60)
-        self.load_fixed_char(char_id)
         self.run_until(self.simple_in_combat, "w", time_out=10, running=True)
 
         for idx in range(farm_target):
@@ -50,7 +56,7 @@ class FastFarmEchoTask(BaseCombatTask):
 
     def simple_in_combat(self):
         now = time.time()
-        if self.check_health_bar():
+        if self.check_boss():
             self._in_combat = True
             self.last_combat_check = now
             return True
@@ -59,29 +65,22 @@ class FastFarmEchoTask(BaseCombatTask):
                 return True
         self._in_combat = False
         return False
+    
+    def check_boss(self):
+        return self.has_f_break_shield() or self.has_health_bar()
 
-    def load_fixed_char(self, char_id):
-        self.load_hotkey()
+    def has_f_break_shield(self):
+        return self.find_one('boss_break_shield') # or self.find_one('boss_break_lock')
 
-        if char_id == 1:
-            self._fixed_char = Cartethyia(self, 0,
-                    res_cd=14,
-                    echo_cd=25,
-                    liberation_cd=20,
-                    char_name="char_cartethyia",
-                    confidence=1,
-                    ring_index=4,
-                )
-        else:
-            self._fixed_char = Aemeath(self, 0,
-                    res_cd=4,
-                    echo_cd=25,
-                    liberation_cd=25,
-                    char_name="char_aemeath",
-                    confidence=1,
-                    ring_index=2,
-                )
-        c = self._fixed_char
-        c.is_current_char = True
-        self.chars = [c]
+    def has_health_bar(self):
+        min_height = self.height_of_screen(12 / 2160)
+        min_width = self.width_of_screen(100 / 3840)
+
+        boxes = find_color_rectangles(self.frame, boss_health_color,
+                                      min_width, min_height,
+                                      box=self.box_of_screen(1269 / 3840, 58 / 2160, 2533 / 3840, 200 / 2160))
+        if boxes:
+            return True
+        return False
+            
 # endregion
