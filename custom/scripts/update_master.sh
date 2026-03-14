@@ -1,4 +1,3 @@
-#!/usr/bin/env zsh
 set -euo pipefail
 
 # Sync local master with upstream/master using fast-forward only,
@@ -28,9 +27,6 @@ git push origin master
 print_section "Rebase my onto master"
 git switch my
 git rebase master
-
-print_section "Sync submodules"
-git submodule update --init --recursive
 
 print_section "Push my"
 git push --force-with-lease origin my
