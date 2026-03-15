@@ -215,7 +215,7 @@ def read_live_stamina(
                 return stamina, backup_stamina
         except Exception as exc:
             last_exc = exc
-            logger.warning("MY-OK-WW: 读取体力失败", exc)
+            logger.warning(f"MY-OK-WW: 读取体力失败: {exc}")
         finally:
             task.ensure_main(esc=True, time_out=20)
 
@@ -257,7 +257,7 @@ def read_echo_number(task: BaseWWTask, *, retries: int = 3, retry_sleep: float =
             logger.warning("MY-OK-WW: 读取声骸数量识别失败")
         except Exception as exc:
             last_exc = exc
-            logger.warning("MY-OK-WW: 读取声骸数量失败", exc)
+            logger.warning(f"MY-OK-WW: 读取声骸数量失败: {exc}")
         finally:
             task.ensure_main(esc=True, time_out=10)
 
