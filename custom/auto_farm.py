@@ -24,7 +24,7 @@ from custom.src.task.my_FastFarmEchoTask import FastFarmEchoTask
 from custom.src.task.my_FiveToOneTask import FiveToOneTask
 
 
-STOP_HOUR = 1
+STOP_HOUR = 3
 STOP_MINUTE = 0
 
 
