@@ -1,7 +1,8 @@
 set -euo pipefail
 
 # Sync local master with upstream/master using fast-forward only,
-# then rebase my onto master, refresh submodules, and push both branches.
+# make local my exactly match origin/my,
+# then rebase my onto master, and push both branches.
 
 if ! git_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
   echo "Error: not inside a git repository."
@@ -16,16 +17,20 @@ print_section() {
 
 start_branch="$(git branch --show-current)"
 
-print_section "Fetch upstream"
+print_section "Fetch remotes"
 git fetch upstream --prune
+git fetch origin --prune
 
 print_section "Sync master"
 git switch master
 git merge --ff-only upstream/master
 git push origin master
 
-print_section "Rebase my onto master"
+print_section "Reset my to origin/my"
 git switch my
+git reset --hard origin/my
+
+print_section "Rebase my onto master"
 git rebase master
 
 print_section "Push my"
