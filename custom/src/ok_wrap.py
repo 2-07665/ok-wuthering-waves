@@ -229,6 +229,33 @@ def read_live_stamina(
     return None, None
 
 echo_number_re = re.compile(r'^(\d+)/3000$')
+echo_overflow_prompt_re = re.compile(r"(2800|智能弃置)")
+
+
+def dismiss_echo_overflow_prompt(task: BaseWWTask, *, ocr_timeout: int = 5) -> bool:
+    prompt = task.wait_ocr(
+        box=task.box_of_screen(*get_ui_box("背包声骸数量上限提示")),
+        match=echo_overflow_prompt_re,
+        raise_if_not_found=False,
+        time_out=ocr_timeout,
+        settle_time=0.2,
+    )
+    if prompt is None:
+        return False
+
+    logger.info("MY-OK-WW: 检测到声骸数量上限提示，尝试点击取消")
+    cancel = task.wait_click_ocr(
+        box=task.box_of_screen(*get_ui_box("背包声骸数量上限取消按钮")),
+        match="取消",
+        time_out=ocr_timeout,
+        raise_if_not_found=False,
+        settle_time=0.2,
+        after_sleep=0.5,
+    )
+    if cancel is None:
+        logger.warning("MY-OK-WW: 检测到声骸数量上限提示，但未找到取消按钮")
+        return False
+    return True
 
 def read_echo_number(task: BaseWWTask, *, retries: int = 3, retry_sleep: float = 10.0, ocr_timeout: int = 5) -> int | None:
     last_exc: Exception | None = None
@@ -241,6 +268,7 @@ def read_echo_number(task: BaseWWTask, *, retries: int = 3, retry_sleep: float =
             task.send_key('b')
             time.sleep(3)
             task.click_relative(0.04, 0.3)
+            dismiss_echo_overflow_prompt(task)
 
             echo_number_box = task.wait_ocr(
                 box=task.box_of_screen(*get_ui_box("背包声骸数量")),
