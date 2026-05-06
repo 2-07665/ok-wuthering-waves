@@ -128,16 +128,6 @@ def run() -> tuple[RunResult, SheetRunConfig]:
         _persist_and_report(sheet_client, result, sheet_config)
         return result, sheet_config
 
-    if daily_points is not None and daily_points >= 100:
-        result.ended_at = result.started_at
-        result.status = "skipped"
-        result.decision = "日常任务已完成"
-        result.run_nightmare = False
-        result.stamina_used = 0
-
-        _persist_and_report(sheet_client, result, sheet_config)
-        return result, sheet_config
-
     ok = None
     daily_task = None
     try:
